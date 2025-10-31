@@ -2,6 +2,9 @@ using BlazorWeb.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add service defaults & Aspire client integrations.
+builder.AddServiceDefaults();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -16,8 +19,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+app.MapDefaultEndpoints();
 
+app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
