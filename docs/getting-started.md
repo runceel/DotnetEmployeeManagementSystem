@@ -58,11 +58,40 @@ Aspire AppHostを使用すると、すべてのサービスとBlazor Webアプ�
 dotnet run --project src/AppHost
 ```
 
-実行後、以下のURLにアクセスできます：
-- **Aspireダッシュボード**: ブラウザが自動的に開きます
-- **BlazorWeb**: ダッシュボードのリソースリストから確認
-- **EmployeeService API**: ダッシュボードのリソースリストから確認
-- **AuthService API**: ダッシュボードのリソースリストから確認
+**起動時に実行されること:**
+- ✅ SQLiteデータベース（employeedb, authdb）の自動作成
+- ✅ EmployeeService API の起動
+- ✅ AuthService API の起動
+- ✅ BlazorWeb UI の起動
+- ✅ Aspireダッシュボードの起動とブラウザで自動オープン
+- ✅ OpenTelemetryによる可観測性の有効化
+- ✅ Health checksの有効化
+- ✅ サービスディスカバリーの構成
+
+**起動後のアクセス:**
+- **Aspireダッシュボード**: `https://localhost:15001` または `http://localhost:15000`
+  - コンソールに表示されるURLを確認してください
+- **BlazorWeb**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7000`）
+- **EmployeeService API**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7001`）
+- **AuthService API**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7002`）
+
+**Aspireダッシュボードの機能:**
+- 📊 **リソースビュー**: すべてのサービスの状態とエンドポイントを確認
+- 📝 **コンソールログ**: リアルタイムログの表示とフィルタリング
+- 🔍 **構造化ログ**: 詳細なログ検索と分析
+- 🔗 **トレース**: サービス間のリクエストフローを可視化
+- 📈 **メトリクス**: パフォーマンス指標のモニタリング
+- 🌐 **環境変数**: 各サービスの設定を確認
+
+詳細は[Aspireダッシュボードガイド](aspire-dashboard.md)を参照してください。
+
+### アプリケーションの停止
+
+```bash
+# コンソールでCtrl+Cを押す
+# または
+pkill -f AppHost
+```
 
 ### 個別サービスの実行
 
@@ -79,11 +108,25 @@ dotnet run --project src/Services/AuthService/API
 dotnet run --project src/WebApps/BlazorWeb
 ```
 
+**注意**: 個別起動時は、以下の機能が利用できません：
+- Aspireダッシュボード
+- 統合的なトレーシング
+- 自動サービスディスカバリー
+- SQLiteデータベースの自動管理
+
 ## Visual Studioでの実行
 
 1. `DotnetEmployeeManagementSystem.sln` を開く
 2. スタートアッププロジェクトを `AppHost` に設定
 3. F5キーを押すか、デバッグ > デバッグの開始
+4. Aspireダッシュボードが自動的に開きます
+
+## Visual Studio Codeでの実行
+
+1. リポジトリをVS Codeで開く
+2. `Run and Debug` パネルを開く (Ctrl+Shift+D / Cmd+Shift+D)
+3. `Aspire AppHost` 構成を選択
+4. F5キーを押す
 
 ## トラブルシューティング
 
