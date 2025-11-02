@@ -158,6 +158,134 @@ API ─→ Infrastructure ─→ Application ─→ Domain
 - 共有エンティティモデル
 - 定数とEnum
 
+## 設計原則とコーディング規約
+
+### バリデーション戦略
+
+このプロジェクトでは、**層ごとに適切なバリデーション手法**を使い分けています。
+
+#### 1. Domain層（エンティティ）
+
+**方針**: コードベースのバリデーション
+
+**理由**:
+- **ドメイン駆動設計（DDD）の原則**: エンティティはドメインロジックをカプセル化し、ビジネスルールを保護します
+- **不変条件（Invariants）の保証**: コンストラクタとメソッドでの検証により、エンティティが常に有効な状態であることを保証します
+- **複雑なビジネスルールへの対応**: カスタムロジック（例: メール検証、日付の範囲チェック）を柔軟に実装できます
+- **依存関係の排除**: DataAnnotationsはインフラストラクチャ層の関心事であり、ドメイン層に持ち込むべきではありません
+- **EF Coreとの互換性**: DataAnnotationsの一部（例: `[MaxLength]`）はマッピング設定と混同される可能性があります
+
+**実装例**:
+```csharp
+// src/Services/EmployeeService/Domain/Entities/Employee.cs
+public class Employee
+{
+    public Guid Id { get; private set; }
+    public string Email { get; private set; }
+    
+    public Employee(string email, ...)
+    {
+        Email = email ?? throw new ArgumentNullException(nameof(email));
+        ValidateEmployee();
+    }
+    
+    private void ValidateEmployee()
+    {
+        if (!IsValidEmail(Email))
+            throw new ArgumentException("有効なメールアドレスを入力してください。");
+            
+        if (HireDate > DateTime.UtcNow)
+            throw new ArgumentException("入社日は現在より前の日付を指定してください。");
+    }
+    
+    private static bool IsValidEmail(string email)
+    {
+        // カスタムメール検証ロジック
+    }
+}
+```
+
+#### 2. Application層（DTO/Contracts）
+
+**方針**: DataAnnotationsを使用
+
+**理由**:
+- **API層との統合**: ASP.NET CoreのModelStateと自動的に連携し、バリデーションエラーを返せます
+- **シンプルな入力検証**: 基本的なフォーマットチェック（必須項目、メール形式など）に最適です
+- **宣言的な記述**: 属性ベースで読みやすく、保守しやすいコードになります
+- **自動ドキュメント生成**: Swaggerなどと統合し、API仕様書に検証ルールが自動反映されます
+
+**実装例**:
+```csharp
+// src/Shared/Contracts/EmployeeService/CreateEmployeeRequest.cs
+public record CreateEmployeeRequest
+{
+    [Required(ErrorMessage = "名を入力してください。")]
+    public string FirstName { get; init; } = string.Empty;
+    
+    [Required(ErrorMessage = "メールアドレスを入力してください。")]
+    [EmailAddress(ErrorMessage = "有効なメールアドレスを入力してください。")]
+    public string Email { get; init; } = string.Empty;
+}
+```
+
+#### 3. バリデーションの責務分離
+
+| 層 | バリデーション手法 | 検証内容 |
+|---|---|---|
+| **Domain** | コードベース | ビジネスルール、不変条件、複雑なロジック |
+| **Application/Contracts** | DataAnnotations | 入力形式、必須チェック、基本的な制約 |
+| **Infrastructure** | データベース制約 | 一意性、外部キー整合性、NOT NULL |
+
+### コンストラクタ規約
+
+**方針**: プライマリコンストラクターを優先的に使用
+
+**適用対象**:
+- サービスクラス（Application層）
+- リポジトリ実装（Infrastructure層）
+- コントローラー/ハンドラー（API層）
+
+**実装例**:
+```csharp
+// ✅ 推奨: プライマリコンストラクター
+public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
+{
+    private readonly IEmployeeRepository _repository = repository ?? 
+        throw new ArgumentNullException(nameof(repository));
+}
+```
+
+**例外**:
+- エンティティクラス: ビジネスロジックと検証を含むため、従来のコンストラクターを使用
+- 複雑な初期化ロジックが必要な場合
+
+### Record型の使用
+
+**方針**: DTOとContractsにはrecord型を使用
+
+**理由**:
+- **不変性**: DTOは通常、データの転送のみを目的とし、変更されるべきではありません
+- **簡潔な構文**: プロパティの宣言が簡潔になります
+- **値の等価性**: 構造的な等価性が自動的に実装されます
+- **with式**: 部分的な変更が簡単にできます
+
+**実装例**:
+```csharp
+// ✅ 推奨: record型
+public record EmployeeDto
+{
+    public Guid Id { get; init; }
+    public string FirstName { get; init; } = string.Empty;
+}
+```
+
+**エンティティには使用しない理由**:
+- エンティティは可変状態を持つ（`Update`メソッドなど）
+- ビジネスロジックと振る舞いを含む
+- EF Coreのためのパラメータなしコンストラクタが必要
+- recordは不変データに適しており、ドメインエンティティには不適切
+
 ## データフロー
 
 ### 典型的なリクエストフロー
