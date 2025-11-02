@@ -65,9 +65,10 @@ DotnetEmployeeManagementSystem/
 | オーケストレーション | .NET Aspire 9.5.2 |
 | フロントエンド | Blazor Web App + MudBlazor |
 | データアクセス | Entity Framework Core 9 |
-| データベース | SQLite（開発）、Azure SQL（本番予定） |
+| データベース | SQLite（開発・Aspire統合）、Azure SQL（本番予定） |
 | 認証 | ASP.NET Core Identity |
-| 可観測性 | OpenTelemetry |
+| 可観測性 | OpenTelemetry（トレース、メトリクス、ログ） |
+| ヘルスチェック | ASP.NET Core Health Checks |
 | テスト | xUnit + Moq |
 
 ## 🎯 主要機能
