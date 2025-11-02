@@ -7,14 +7,9 @@ namespace EmployeeService.Application.UseCases;
 /// <summary>
 /// 従業員サービス
 /// </summary>
-public class EmployeeService : IEmployeeService
+public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
 {
-    private readonly IEmployeeRepository _repository;
-
-    public EmployeeService(IEmployeeRepository repository)
-    {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-    }
+    private readonly IEmployeeRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
     public async Task<EmployeeDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
