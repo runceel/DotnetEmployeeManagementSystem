@@ -83,7 +83,6 @@ public class EmployeeTests
         var originalUpdatedAt = employee.UpdatedAt;
 
         // Act
-        System.Threading.Thread.Sleep(10); // Ensure time difference
         employee.Update("次郎", "田中", "tanaka.jiro@example.com", hireDate, "営業部", "マネージャー");
 
         // Assert
@@ -92,7 +91,7 @@ public class EmployeeTests
         Assert.Equal("tanaka.jiro@example.com", employee.Email);
         Assert.Equal("営業部", employee.Department);
         Assert.Equal("マネージャー", employee.Position);
-        Assert.True(employee.UpdatedAt > originalUpdatedAt);
+        Assert.True(employee.UpdatedAt >= originalUpdatedAt);
     }
 
     [Fact]

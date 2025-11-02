@@ -31,6 +31,7 @@ public class EmployeeService : IEmployeeService
     public async Task<EmployeeDto> CreateAsync(CreateEmployeeRequest request, CancellationToken cancellationToken = default)
     {
         // メールアドレスの重複チェック
+        // Note: データベース層でのユニーク制約とトランザクション処理により、完全な整合性を保証する必要があります
         var existingEmployee = await _repository.GetByEmailAsync(request.Email, cancellationToken);
         if (existingEmployee != null)
         {
@@ -51,6 +52,7 @@ public class EmployeeService : IEmployeeService
         }
 
         // メールアドレスの重複チェック（自分以外）
+        // Note: データベース層でのユニーク制約とトランザクション処理により、完全な整合性を保証する必要があります
         var existingEmployee = await _repository.GetByEmailAsync(request.Email, cancellationToken);
         if (existingEmployee != null && existingEmployee.Id != id)
         {
