@@ -26,7 +26,7 @@ public static class DbInitializer
             logger.LogInformation("Database migration completed.");
 
             // データが既に存在する場合はスキップ
-            if (await context.Employees.AnyAsync())
+            if (await context.Employees.Take(1).AnyAsync())
             {
                 logger.LogInformation("Database already seeded.");
                 return;

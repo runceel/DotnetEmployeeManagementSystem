@@ -32,7 +32,7 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
                 // Add in-memory database for testing with unique database name per test
                 services.AddDbContext<EmployeeDbContext>(options =>
                 {
-                    options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString());
+                    options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
                 });
                 
                 // Register repository
