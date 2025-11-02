@@ -9,15 +9,17 @@ builder.AddServiceDefaults();
 // Add MudBlazor services
 builder.Services.AddMudServices();
 
-// Add HttpClient for EmployeeService
+// Add HttpClient for EmployeeService with Aspire service discovery
 builder.Services.AddHttpClient("employeeservice-api", client =>
 {
+    // Service discovery will resolve this to the actual endpoint
     client.BaseAddress = new Uri("http://employeeservice-api");
 });
 
-// Add HttpClient for AuthService
+// Add HttpClient for AuthService with Aspire service discovery
 builder.Services.AddHttpClient("authservice-api", client =>
 {
+    // Service discovery will resolve this to the actual endpoint
     client.BaseAddress = new Uri("http://authservice-api");
 });
 
