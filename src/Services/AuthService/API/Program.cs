@@ -1,3 +1,9 @@
+using AuthService.Application.DTOs;
+using AuthService.Application.Services;
+using AuthService.Infrastructure;
+using AuthService.Infrastructure.Data;
+using Microsoft.AspNetCore.Mvc;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
@@ -7,7 +13,17 @@ builder.AddServiceDefaults();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// データベース接続文字列とInfrastructure層の初期化
+var connectionString = builder.Configuration.GetConnectionString("AuthDb") 
+    ?? "Data Source=auth.db";
+
+// Infrastructure層のサービスを追加
+builder.Services.AddInfrastructure(connectionString);
+
 var app = builder.Build();
+
+// データベース初期化
+await DbInitializer.InitializeAsync(app.Services);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -19,28 +35,36 @@ app.MapDefaultEndpoints();
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// Auth API endpoints
+var auth = app.MapGroup("/api/auth")
+    .WithTags("Authentication")
+    .WithOpenApi();
 
-app.MapGet("/weatherforecast", () =>
+// ログインエンドポイント
+auth.MapPost("/login", async ([FromBody] LoginRequest request, IAuthService authService) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    var result = await authService.LoginAsync(request);
+    return result is not null ? Results.Ok(result) : Results.Unauthorized();
 })
-.WithName("GetWeatherForecast");
+.WithName("Login")
+.Produces<AuthResponse>()
+.Produces(StatusCodes.Status401Unauthorized);
+
+// ユーザー登録エンドポイント
+auth.MapPost("/register", async ([FromBody] RegisterRequest request, IAuthService authService) =>
+{
+    var result = await authService.RegisterAsync(request);
+    if (result is null)
+    {
+        return Results.BadRequest(new { error = "ユーザー名またはメールアドレスが既に使用されています。" });
+    }
+    return Results.Created($"/api/auth/users/{result.UserId}", result);
+})
+.WithName("Register")
+.Produces<AuthResponse>(StatusCodes.Status201Created)
+.Produces(StatusCodes.Status400BadRequest);
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// Make Program class accessible for integration tests
+public partial class Program { }
