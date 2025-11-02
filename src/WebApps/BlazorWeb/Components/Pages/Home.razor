@@ -1,7 +1,76 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>ホーム - 従業員管理システム</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudText Typo="Typo.h3" GutterBottom="true">従業員管理システムへようこそ</MudText>
+<MudText Typo="Typo.body1" GutterBottom="true">
+    このアプリケーションは、従業員情報を効率的に管理するためのシステムです。
+</MudText>
 
-Welcome to your new app.
+<MudGrid Class="mt-4">
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h5" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Dashboard" /> ダッシュボード
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    システムの概要と重要な統計情報を確認できます。
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/dashboard">開く</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h5" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.People" /> 従業員管理
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    従業員情報の登録、編集、検索を行えます。
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="true">準備中</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h5" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" /> 認証
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    ユーザー認証とアクセス管理を行います。
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="true">準備中</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.h4" GutterBottom="true">機能概要</MudText>
+<MudList T="string">
+    <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+        MudBlazorによるモダンなUI
+    </MudListItem>
+    <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+        .NET Aspireによるマイクロサービス統合
+    </MudListItem>
+    <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+        従業員サービスとの連携（実装予定）
+    </MudListItem>
+    <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+        認証サービスとの連携（実装予定）
+    </MudListItem>
+</MudList>
