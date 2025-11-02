@@ -1,0 +1,189 @@
+@page "/dashboard"
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>ダッシュボード - 従業員管理システム</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">ダッシュボード</MudText>
+<MudText Typo="Typo.body1" Class="mb-4">システムの概要と統計情報</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">総従業員数</MudText>
+                <MudText Typo="Typo.h3" Color="Color.Primary">@_totalEmployees</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">登録済み従業員</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">アクティブユーザー</MudText>
+                <MudText Typo="Typo.h3" Color="Color.Success">@_activeUsers</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">現在ログイン中</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">部署数</MudText>
+                <MudText Typo="Typo.h3" Color="Color.Info">@_departments</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">登録部署</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">今月の新規登録</MudText>
+                <MudText Typo="Typo.h3" Color="Color.Warning">@_newThisMonth</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">新規追加</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="8">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">最近の活動</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTimeline TimelineOrientation="TimelineOrientation.Vertical" TimelinePosition="TimelinePosition.Start">
+                    <MudTimelineItem Color="Color.Success" Elevation="2">
+                        <ItemContent>
+                            <MudText Typo="Typo.body1"><strong>新規従業員登録</strong></MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">山田太郎さんが登録されました</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">2時間前</MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                    <MudTimelineItem Color="Color.Info" Elevation="2">
+                        <ItemContent>
+                            <MudText Typo="Typo.body1"><strong>情報更新</strong></MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">佐藤花子さんの部署が変更されました</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">5時間前</MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                    <MudTimelineItem Color="Color.Warning" Elevation="2">
+                        <ItemContent>
+                            <MudText Typo="Typo.body1"><strong>システムメンテナンス</strong></MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">定期メンテナンスが完了しました</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">1日前</MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                </MudTimeline>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" md="4">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">クイックアクション</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="2">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               StartIcon="@Icons.Material.Filled.PersonAdd" 
+                               FullWidth="true"
+                               Disabled="true">
+                        新規従業員登録
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Secondary" 
+                               StartIcon="@Icons.Material.Filled.Search" 
+                               FullWidth="true"
+                               Disabled="true">
+                        従業員検索
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Tertiary" 
+                               StartIcon="@Icons.Material.Filled.Assessment" 
+                               FullWidth="true"
+                               Disabled="true">
+                        レポート生成
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Default" 
+                               StartIcon="@Icons.Material.Filled.Settings" 
+                               FullWidth="true"
+                               Disabled="true">
+                        設定
+                    </MudButton>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+        
+        <MudCard Class="mt-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">システムステータス</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="2">
+                    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">従業員サービス: @_employeeServiceStatus</MudChip>
+                    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">認証サービス: @_authServiceStatus</MudChip>
+                    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">データベース: 正常</MudChip>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private int _totalEmployees = 0;
+    private int _activeUsers = 0;
+    private int _departments = 0;
+    private int _newThisMonth = 0;
+    private string _employeeServiceStatus = "確認中...";
+    private string _authServiceStatus = "確認中...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Sample data for demonstration
+        _totalEmployees = 42;
+        _activeUsers = 12;
+        _departments = 8;
+        _newThisMonth = 5;
+
+        // Check service status
+        await CheckServicesStatus();
+    }
+
+    private async Task CheckServicesStatus()
+    {
+        try
+        {
+            var employeeClient = HttpClientFactory.CreateClient("employeeservice-api");
+            var employeeResponse = await employeeClient.GetAsync("/health");
+            _employeeServiceStatus = employeeResponse.IsSuccessStatusCode ? "正常" : "エラー";
+        }
+        catch
+        {
+            _employeeServiceStatus = "接続不可";
+        }
+
+        try
+        {
+            var authClient = HttpClientFactory.CreateClient("authservice-api");
+            var authResponse = await authClient.GetAsync("/health");
+            _authServiceStatus = authResponse.IsSuccessStatusCode ? "正常" : "エラー";
+        }
+        catch
+        {
+            _authServiceStatus = "接続不可";
+        }
+    }
+}

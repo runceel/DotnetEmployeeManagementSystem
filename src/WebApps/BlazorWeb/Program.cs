@@ -1,9 +1,25 @@
 using BlazorWeb.Components;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
+
+// Add MudBlazor services
+builder.Services.AddMudServices();
+
+// Add HttpClient for EmployeeService
+builder.Services.AddHttpClient("employeeservice-api", client =>
+{
+    client.BaseAddress = new Uri("http://employeeservice-api");
+});
+
+// Add HttpClient for AuthService
+builder.Services.AddHttpClient("authservice-api", client =>
+{
+    client.BaseAddress = new Uri("http://authservice-api");
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
