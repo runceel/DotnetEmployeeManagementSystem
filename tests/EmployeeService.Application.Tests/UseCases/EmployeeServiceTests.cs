@@ -1,0 +1,239 @@
+using EmployeeService.Application.UseCases;
+using EmployeeService.Domain.Entities;
+using EmployeeService.Domain.Repositories;
+using Moq;
+using Shared.Contracts.EmployeeService;
+
+namespace EmployeeService.Application.Tests.UseCases;
+
+public class EmployeeServiceTests
+{
+    private readonly Mock<IEmployeeRepository> _mockRepository;
+    private readonly IEmployeeService _service;
+
+    public EmployeeServiceTests()
+    {
+        _mockRepository = new Mock<IEmployeeRepository>();
+        _service = new EmployeeService.Application.UseCases.EmployeeService(_mockRepository.Object);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithExistingId_ShouldReturnEmployeeDto()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+        
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee);
+
+        // Act
+        var result = await _service.GetByIdAsync(employeeId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(employee.FirstName, result.FirstName);
+        Assert.Equal(employee.LastName, result.LastName);
+        Assert.Equal(employee.Email, result.Email);
+        _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithNonExistingId_ShouldReturnNull()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        // Act
+        var result = await _service.GetByIdAsync(employeeId);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ShouldReturnAllEmployees()
+    {
+        // Arrange
+        var employees = new List<Employee>
+        {
+            new Employee("太郎", "山田", "yamada.taro@example.com", 
+                new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア"),
+            new Employee("花子", "佐藤", "sato.hanako@example.com", 
+                new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc), "営業部", "マネージャー")
+        };
+
+        _mockRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employees);
+
+        // Act
+        var result = await _service.GetAllAsync();
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count());
+        _mockRepository.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithValidRequest_ShouldCreateEmployee()
+    {
+        // Arrange
+        var request = new CreateEmployeeRequest
+        {
+            FirstName = "太郎",
+            LastName = "山田",
+            Email = "yamada.taro@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "エンジニア"
+        };
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Employee>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee e, CancellationToken ct) => e);
+
+        // Act
+        var result = await _service.CreateAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(request.FirstName, result.FirstName);
+        Assert.Equal(request.LastName, result.LastName);
+        Assert.Equal(request.Email, result.Email);
+        _mockRepository.Verify(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Employee>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithDuplicateEmail_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var existingEmployee = new Employee("次郎", "田中", "duplicate@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+        
+        var request = new CreateEmployeeRequest
+        {
+            FirstName = "太郎",
+            LastName = "山田",
+            Email = "duplicate@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "エンジニア"
+        };
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingEmployee);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CreateAsync(request));
+        _mockRepository.Verify(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Employee>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithValidRequest_ShouldUpdateEmployee()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+
+        var request = new UpdateEmployeeRequest
+        {
+            FirstName = "次郎",
+            LastName = "田中",
+            Email = "tanaka.jiro@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "営業部",
+            Position = "マネージャー"
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee);
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        // Act
+        var result = await _service.UpdateAsync(employeeId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(request.FirstName, result.FirstName);
+        Assert.Equal(request.LastName, result.LastName);
+        Assert.Equal(request.Email, result.Email);
+        _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.UpdateAsync(employee, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithNonExistingId_ShouldReturnNull()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var request = new UpdateEmployeeRequest
+        {
+            FirstName = "次郎",
+            LastName = "田中",
+            Email = "tanaka.jiro@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "営業部",
+            Position = "マネージャー"
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        // Act
+        var result = await _service.UpdateAsync(employeeId, request);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Employee>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithExistingId_ShouldReturnTrue()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee);
+
+        // Act
+        var result = await _service.DeleteAsync(employeeId);
+
+        // Assert
+        Assert.True(result);
+        _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.DeleteAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithNonExistingId_ShouldReturnFalse()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        // Act
+        var result = await _service.DeleteAsync(employeeId);
+
+        // Assert
+        Assert.False(result);
+        _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
