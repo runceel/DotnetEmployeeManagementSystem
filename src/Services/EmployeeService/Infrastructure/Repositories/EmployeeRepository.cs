@@ -51,8 +51,13 @@ public class EmployeeRepository : IEmployeeRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _context.Employees
-            .Where(e => e.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
+        var employee = await _context.Employees
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        
+        if (employee != null)
+        {
+            _context.Employees.Remove(employee);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
     }
 }
