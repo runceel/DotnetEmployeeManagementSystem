@@ -22,7 +22,7 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
 
     private HttpClient CreateClient()
     {
-        // Use a unique database name per test instance to isolate tests
+        // Use a unique database name per test to isolate test data
         var dbName = $"TestDb_{Guid.NewGuid()}";
         
         return _baseFactory.WithWebHostBuilder(builder =>
@@ -36,7 +36,7 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
                 services.RemoveAll<DbContextOptions<EmployeeDbContext>>();
                 services.RemoveAll<EmployeeDbContext>();
                 
-                // Add in-memory database for testing with consistent database name per client
+                // Add in-memory database for testing - same DB instance for all requests from this client
                 services.AddDbContext<EmployeeDbContext>(options =>
                 {
                     options.UseInMemoryDatabase(dbName);

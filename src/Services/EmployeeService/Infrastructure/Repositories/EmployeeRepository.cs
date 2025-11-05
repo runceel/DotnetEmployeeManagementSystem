@@ -51,6 +51,9 @@ public class EmployeeRepository : IEmployeeRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        // Note: Using Find + Remove pattern instead of ExecuteDeleteAsync for compatibility
+        // with InMemory database provider used in integration tests.
+        // In production with SQLite/SQL Server, this still performs efficiently.
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         
