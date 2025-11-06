@@ -45,7 +45,14 @@ public class AuthApiClient : IAuthApiClient
             }
             
             var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>(cancellationToken: cancellationToken);
-            _logger.LogInformation("Login successful for user: {UserName}", authResponse?.UserName);
+            
+            if (authResponse is null)
+            {
+                _logger.LogError("Login succeeded but response body could not be parsed");
+                throw new InvalidOperationException("ログインは成功しましたが、レスポンスの解析に失敗しました。");
+            }
+            
+            _logger.LogInformation("Login successful for user: {UserName}", authResponse.UserName);
             return authResponse;
         }
         catch (HttpRequestException ex)
@@ -87,7 +94,14 @@ public class AuthApiClient : IAuthApiClient
             }
             
             var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>(cancellationToken: cancellationToken);
-            _logger.LogInformation("Registration successful for user: {UserName}", authResponse?.UserName);
+            
+            if (authResponse is null)
+            {
+                _logger.LogError("Registration succeeded but response body could not be parsed");
+                throw new InvalidOperationException("ユーザー登録は成功しましたが、レスポンスの解析に失敗しました。");
+            }
+            
+            _logger.LogInformation("Registration successful for user: {UserName}", authResponse.UserName);
             return authResponse;
         }
         catch (HttpRequestException ex)

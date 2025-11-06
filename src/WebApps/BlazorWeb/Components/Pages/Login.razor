@@ -5,6 +5,7 @@
 @inject AuthStateService AuthStateService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <PageTitle>ログイン</PageTitle>
 
@@ -90,6 +91,7 @@
     private LoginModel _loginModel = new();
     private bool _isLoading = false;
     private string? _errorMessage;
+    private CancellationTokenSource? _cts;
 
     private class LoginModel
     {
@@ -105,6 +107,10 @@
 
     private async Task HandleLogin()
     {
+        // Cancel any existing login attempt
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        
         _isLoading = true;
         _errorMessage = null;
         StateHasChanged();
@@ -117,7 +123,7 @@
                 Password = _loginModel.Password
             };
 
-            var response = await AuthApiClient.LoginAsync(request);
+            var response = await AuthApiClient.LoginAsync(request, _cts.Token);
 
             if (response != null)
             {
@@ -131,6 +137,10 @@
                 Snackbar.Add("ログインに失敗しました", Severity.Error);
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Login was cancelled, do nothing
+        }
         catch (Exception ex)
         {
             _errorMessage = "ログイン処理中にエラーが発生しました。";
@@ -141,5 +151,11 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
     }
 }

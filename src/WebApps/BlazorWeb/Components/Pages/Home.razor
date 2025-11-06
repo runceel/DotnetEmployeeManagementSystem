@@ -7,11 +7,12 @@
 
 <MudText Typo="Typo.h3" GutterBottom="true">従業員管理システムへようこそ</MudText>
 
-@if (AuthStateService.IsAuthenticated)
+@if (AuthStateService.IsAuthenticated && AuthStateService.CurrentUser is not null)
 {
+    var currentUser = AuthStateService.CurrentUser;
     <MudAlert Severity="Severity.Success" Class="mb-4">
         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" />
-        ログイン中: <strong>@AuthStateService.CurrentUser?.UserName</strong> (@AuthStateService.CurrentUser?.Email)
+        ログイン中: <strong>@currentUser.UserName</strong> (@currentUser.Email)
     </MudAlert>
 }
 else
