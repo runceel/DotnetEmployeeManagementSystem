@@ -1,0 +1,145 @@
+@page "/login"
+@using Shared.Contracts.AuthService
+@using BlazorWeb.Services
+@inject IAuthApiClient AuthApiClient
+@inject AuthStateService AuthStateService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>ログイン</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="4" Class="pa-8">
+        <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">
+            <MudIcon Icon="@Icons.Material.Filled.Login" Size="Size.Large" Class="mr-2" />
+            ログイン
+        </MudText>
+        
+        <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+            従業員管理システムにログインしてください
+        </MudText>
+
+        <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            
+            <MudTextField 
+                @bind-Value="_loginModel.UserNameOrEmail"
+                Label="ユーザー名またはメールアドレス"
+                Variant="Variant.Outlined"
+                Margin="Margin.Dense"
+                FullWidth="true"
+                Required="true"
+                RequiredError="ユーザー名またはメールアドレスを入力してください"
+                Class="mb-4"
+                Disabled="@_isLoading" />
+
+            <MudTextField 
+                @bind-Value="_loginModel.Password"
+                Label="パスワード"
+                Variant="Variant.Outlined"
+                Margin="Margin.Dense"
+                InputType="InputType.Password"
+                FullWidth="true"
+                Required="true"
+                RequiredError="パスワードを入力してください"
+                Class="mb-6"
+                Disabled="@_isLoading" />
+
+            <MudButton 
+                ButtonType="ButtonType.Submit"
+                Variant="Variant.Filled"
+                Color="Color.Primary"
+                FullWidth="true"
+                Size="Size.Large"
+                Disabled="@_isLoading"
+                Class="mb-4">
+                @if (_isLoading)
+                {
+                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    <span>ログイン中...</span>
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Login" Class="mr-2" />
+                    <span>ログイン</span>
+                }
+            </MudButton>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-4">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </EditForm>
+
+        <MudDivider Class="my-6" />
+
+        <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+            テストユーザー:
+            <MudChip T="string" Size="Size.Small" Color="Color.Info" OnClick="@(() => SetTestUser("testuser"))">testuser</MudChip>
+            <MudChip T="string" Size="Size.Small" Color="Color.Warning" OnClick="@(() => SetTestUser("admin"))">admin</MudChip>
+        </MudText>
+        <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+            パスワード: Password123! / Admin123!
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private LoginModel _loginModel = new();
+    private bool _isLoading = false;
+    private string? _errorMessage;
+
+    private class LoginModel
+    {
+        public string UserNameOrEmail { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    private void SetTestUser(string username)
+    {
+        _loginModel.UserNameOrEmail = username;
+        _loginModel.Password = username == "admin" ? "Admin123!" : "Password123!";
+    }
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var request = new LoginRequest
+            {
+                UserNameOrEmail = _loginModel.UserNameOrEmail,
+                Password = _loginModel.Password
+            };
+
+            var response = await AuthApiClient.LoginAsync(request);
+
+            if (response != null)
+            {
+                AuthStateService.Login(response);
+                Snackbar.Add($"ようこそ、{response.UserName}さん！", Severity.Success);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = "ユーザー名またはパスワードが正しくありません。";
+                Snackbar.Add("ログインに失敗しました", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "ログイン処理中にエラーが発生しました。";
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

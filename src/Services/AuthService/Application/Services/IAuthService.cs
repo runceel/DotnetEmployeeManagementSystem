@@ -1,4 +1,4 @@
-using AuthService.Application.DTOs;
+using Shared.Contracts.AuthService;
 
 namespace AuthService.Application.Services;
 

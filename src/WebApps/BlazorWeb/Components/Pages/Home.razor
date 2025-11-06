@@ -1,8 +1,27 @@
-﻿@page "/"
+@page "/"
+@using BlazorWeb.Services
+@inject AuthStateService AuthStateService
+@implements IDisposable
 
 <PageTitle>ホーム - 従業員管理システム</PageTitle>
 
 <MudText Typo="Typo.h3" GutterBottom="true">従業員管理システムへようこそ</MudText>
+
+@if (AuthStateService.IsAuthenticated)
+{
+    <MudAlert Severity="Severity.Success" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" />
+        ログイン中: <strong>@AuthStateService.CurrentUser?.UserName</strong> (@AuthStateService.CurrentUser?.Email)
+    </MudAlert>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+        ログインしていません。<MudLink Href="/login">ログインページ</MudLink>からログインしてください。
+    </MudAlert>
+}
+
 <MudText Typo="Typo.body1" GutterBottom="true">
     このアプリケーションは、従業員情報を効率的に管理するためのシステムです。
 </MudText>
@@ -51,7 +70,14 @@
                 </MudText>
             </MudCardContent>
             <MudCardActions>
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="true">準備中</MudButton>
+                @if (AuthStateService.IsAuthenticated)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="HandleLogout">ログアウト</MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/login">ログイン</MudButton>
+                }
             </MudCardActions>
         </MudCard>
     </MudItem>
@@ -71,6 +97,23 @@
         従業員サービスとの連携（実装済み）
     </MudListItem>
     <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
-        認証サービスとの連携（実装予定）
+        認証サービスとの連携（実装済み）
     </MudListItem>
 </MudList>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthStateService.OnAuthStateChanged += StateHasChanged;
+    }
+
+    private void HandleLogout()
+    {
+        AuthStateService.Logout();
+    }
+
+    public void Dispose()
+    {
+        AuthStateService.OnAuthStateChanged -= StateHasChanged;
+    }
+}

@@ -1,8 +1,8 @@
-using AuthService.Application.DTOs;
 using AuthService.Application.Services;
 using AuthService.Infrastructure;
 using AuthService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Contracts.AuthService;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -18,11 +18,14 @@ builder.Services.AddHttpClient<IEmployeeApiClient, EmployeeApiClient>("employees
 });
 
 // Add HttpClient for AuthService with Aspire service discovery
-builder.Services.AddHttpClient("authservice-api", client =>
+builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>("authservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint
     client.BaseAddress = new Uri("http://authservice-api");
 });
+
+// Add authentication state management service
+builder.Services.AddScoped<AuthStateService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

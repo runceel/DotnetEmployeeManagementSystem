@@ -1,7 +1,44 @@
-﻿<MudNavMenu>
+@using BlazorWeb.Services
+@inject AuthStateService AuthStateService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">ホーム</MudNavLink>
     <MudNavLink Href="dashboard" Icon="@Icons.Material.Filled.Dashboard">ダッシュボード</MudNavLink>
     <MudNavLink Href="employees" Icon="@Icons.Material.Filled.People">従業員管理</MudNavLink>
     <MudNavLink Href="counter" Icon="@Icons.Material.Filled.PlusOne">Counter</MudNavLink>
     <MudNavLink Href="weather" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
+    
+    <MudDivider Class="my-2" />
+    
+    @if (AuthStateService.IsAuthenticated)
+    {
+        <MudNavLink Icon="@Icons.Material.Filled.Person">
+            <MudText Typo="Typo.body2">@AuthStateService.CurrentUser?.UserName</MudText>
+        </MudNavLink>
+        <MudNavLink OnClick="HandleLogout" Icon="@Icons.Material.Filled.Logout">ログアウト</MudNavLink>
+    }
+    else
+    {
+        <MudNavLink Href="login" Icon="@Icons.Material.Filled.Login">ログイン</MudNavLink>
+    }
 </MudNavMenu>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthStateService.OnAuthStateChanged += StateHasChanged;
+    }
+
+    private void HandleLogout()
+    {
+        AuthStateService.Logout();
+        NavigationManager.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        AuthStateService.OnAuthStateChanged -= StateHasChanged;
+    }
+}
