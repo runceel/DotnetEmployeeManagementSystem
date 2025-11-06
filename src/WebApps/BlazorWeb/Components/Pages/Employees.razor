@@ -1,0 +1,106 @@
+@page "/employees"
+@using Shared.Contracts.EmployeeService
+@using BlazorWeb.Services
+@inject IEmployeeApiClient EmployeeApiClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>従業員一覧 - 従業員管理システム</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">従業員一覧</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    <MudText Typo="Typo.body1" Class="mt-2">従業員データを読み込み中...</MudText>
+}
+else if (_error)
+{
+    <MudAlert Severity="Severity.Error" Class="my-4">
+        @_errorMessage
+    </MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadEmployees">
+        再試行
+    </MudButton>
+}
+else if (_employees is null || !_employees.Any())
+{
+    <MudAlert Severity="Severity.Info" Class="my-4">
+        従業員データが登録されていません。
+    </MudAlert>
+}
+else
+{
+    <MudTable Items="_employees" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true" Class="mt-4">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>氏名</MudTh>
+            <MudTh>メールアドレス</MudTh>
+            <MudTh>部署</MudTh>
+            <MudTh>役職</MudTh>
+            <MudTh>入社日</MudTh>
+            <MudTh>アクション</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID">@context.Id.ToString("N")[..8]...</MudTd>
+            <MudTd DataLabel="氏名">@context.FullName</MudTd>
+            <MudTd DataLabel="メールアドレス">@context.Email</MudTd>
+            <MudTd DataLabel="部署">@context.Department</MudTd>
+            <MudTd DataLabel="役職">@context.Position</MudTd>
+            <MudTd DataLabel="入社日">@context.HireDate.ToString("yyyy/MM/dd")</MudTd>
+            <MudTd DataLabel="アクション">
+                <MudButton 
+                    Variant="Variant.Text" 
+                    Color="Color.Primary" 
+                    Size="Size.Small"
+                    OnClick="@(() => NavigateToDetail(context.Id))">
+                    詳細
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+    
+    <MudText Typo="Typo.body2" Class="mt-4">
+        合計: @_employees.Count() 件
+    </MudText>
+}
+
+@code {
+    private IEnumerable<EmployeeDto>? _employees;
+    private bool _loading = true;
+    private bool _error = false;
+    private string _errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        _loading = true;
+        _error = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            _employees = await EmployeeApiClient.GetAllEmployeesAsync();
+            Snackbar.Add("従業員データを正常に読み込みました。", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _error = true;
+            _errorMessage = ex.Message;
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void NavigateToDetail(Guid id)
+    {
+        Navigation.NavigateTo($"/employees/{id}");
+    }
+}

@@ -1,4 +1,5 @@
 using BlazorWeb.Components;
+using BlazorWeb.Services;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +11,7 @@ builder.AddServiceDefaults();
 builder.Services.AddMudServices();
 
 // Add HttpClient for EmployeeService with Aspire service discovery
-builder.Services.AddHttpClient("employeeservice-api", client =>
+builder.Services.AddHttpClient<IEmployeeApiClient, EmployeeApiClient>("employeeservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint
     client.BaseAddress = new Uri("http://employeeservice-api");

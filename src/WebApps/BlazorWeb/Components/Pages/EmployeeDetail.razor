@@ -1,0 +1,164 @@
+@page "/employees/{id:guid}"
+@using Shared.Contracts.EmployeeService
+@using BlazorWeb.Services
+@inject IEmployeeApiClient EmployeeApiClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>従業員詳細 - 従業員管理システム</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4"></MudBreadcrumbs>
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    <MudText Typo="Typo.body1" Class="mt-2">従業員データを読み込み中...</MudText>
+}
+else if (_error)
+{
+    <MudAlert Severity="Severity.Error" Class="my-4">
+        @_errorMessage
+    </MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadEmployee">
+        再試行
+    </MudButton>
+    <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="NavigateToList" Class="ml-2">
+        一覧に戻る
+    </MudButton>
+}
+else if (_employee is null)
+{
+    <MudAlert Severity="Severity.Warning" Class="my-4">
+        従業員が見つかりませんでした。
+    </MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NavigateToList">
+        一覧に戻る
+    </MudButton>
+}
+else
+{
+    <MudText Typo="Typo.h3" GutterBottom="true">従業員詳細</MudText>
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="従業員ID" Variant="Variant.Text">
+                        @_employee.Id
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="氏名" Variant="Variant.Text">
+                        @_employee.FullName
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="名" Variant="Variant.Text">
+                        @_employee.FirstName
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="姓" Variant="Variant.Text">
+                        @_employee.LastName
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="メールアドレス" Variant="Variant.Text">
+                        <MudLink Href="@($"mailto:{_employee.Email}")">@_employee.Email</MudLink>
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="入社日" Variant="Variant.Text">
+                        @_employee.HireDate.ToString("yyyy年MM月dd日")
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="部署" Variant="Variant.Text">
+                        @_employee.Department
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="役職" Variant="Variant.Text">
+                        @_employee.Position
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="作成日時" Variant="Variant.Text">
+                        @_employee.CreatedAt.ToString("yyyy/MM/dd HH:mm:ss")
+                    </MudField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudField Label="更新日時" Variant="Variant.Text">
+                        @_employee.UpdatedAt.ToString("yyyy/MM/dd HH:mm:ss")
+                    </MudField>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton 
+                Variant="Variant.Filled" 
+                Color="Color.Primary" 
+                OnClick="NavigateToList">
+                一覧に戻る
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private EmployeeDto? _employee;
+    private bool _loading = true;
+    private bool _error = false;
+    private string _errorMessage = string.Empty;
+    
+    private List<BreadcrumbItem> _breadcrumbItems = new()
+    {
+        new BreadcrumbItem("ホーム", href: "/"),
+        new BreadcrumbItem("従業員一覧", href: "/employees"),
+        new BreadcrumbItem("詳細", href: null, disabled: true)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployee();
+    }
+
+    private async Task LoadEmployee()
+    {
+        _loading = true;
+        _error = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            _employee = await EmployeeApiClient.GetEmployeeByIdAsync(Id);
+            
+            if (_employee is not null)
+            {
+                Snackbar.Add("従業員データを正常に読み込みました。", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("従業員が見つかりませんでした。", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = true;
+            _errorMessage = ex.Message;
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void NavigateToList()
+    {
+        Navigation.NavigateTo("/employees");
+    }
+}
