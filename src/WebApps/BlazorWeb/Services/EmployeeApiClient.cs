@@ -116,11 +116,7 @@ public class EmployeeApiClient : IEmployeeApiClient
             _logger.LogError(ex, "HTTP request failed while creating employee");
             throw new InvalidOperationException("従業員の作成に失敗しました。", ex);
         }
-        catch (InvalidOperationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
             _logger.LogError(ex, "Unexpected error while creating employee");
             throw new InvalidOperationException("従業員の作成中に予期しないエラーが発生しました。", ex);
@@ -162,11 +158,7 @@ public class EmployeeApiClient : IEmployeeApiClient
             _logger.LogError(ex, "HTTP request failed while updating employee with ID: {EmployeeId}", id);
             throw new InvalidOperationException($"従業員（ID: {id}）の更新に失敗しました。", ex);
         }
-        catch (InvalidOperationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
             _logger.LogError(ex, "Unexpected error while updating employee with ID: {EmployeeId}", id);
             throw new InvalidOperationException($"従業員（ID: {id}）の更新中に予期しないエラーが発生しました。", ex);

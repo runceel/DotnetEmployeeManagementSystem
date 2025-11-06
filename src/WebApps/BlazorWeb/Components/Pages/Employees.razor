@@ -42,7 +42,7 @@ else
             <MudTh>アクション</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="ID">@context.Id.ToString().Substring(0, 8)...</MudTd>
+            <MudTd DataLabel="ID">@context.Id.ToString("N")[..8]...</MudTd>
             <MudTd DataLabel="氏名">@context.FullName</MudTd>
             <MudTd DataLabel="メールアドレス">@context.Email</MudTd>
             <MudTd DataLabel="部署">@context.Department</MudTd>
