@@ -1,10 +1,10 @@
-using AuthService.Application.DTOs;
 using AuthService.Domain.Entities;
 using AuthService.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Shared.Contracts.AuthService;
 
 namespace AuthService.Tests;
 
