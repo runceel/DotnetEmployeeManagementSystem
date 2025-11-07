@@ -17,9 +17,12 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
     {
+        // Remove unsupported Extensions parameter from connection string
+        var cleanedConnectionString = RemoveUnsupportedParameters(connectionString);
+        
         // DbContextの登録
         services.AddDbContext<AuthDbContext>(options =>
-            options.UseSqlite(connectionString));
+            options.UseSqlite(cleanedConnectionString));
 
         // ASP.NET Core Identityの登録
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -41,5 +44,20 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, Services.AuthService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Removes unsupported parameters from SQLite connection string
+    /// </summary>
+    private static string RemoveUnsupportedParameters(string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(connectionString);
+        
+        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var cleanedParts = parts
+            .Where(part => !part.Trim().StartsWith("Extensions=", StringComparison.OrdinalIgnoreCase))
+            .Select(part => part.Trim());
+        
+        return string.Join(";", cleanedParts);
     }
 }
