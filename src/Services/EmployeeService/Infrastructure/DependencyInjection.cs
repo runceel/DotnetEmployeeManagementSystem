@@ -34,6 +34,8 @@ public static class DependencyInjection
     /// </summary>
     private static string RemoveUnsupportedParameters(string connectionString)
     {
+        ArgumentNullException.ThrowIfNull(connectionString);
+        
         var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
         var cleanedParts = parts
             .Where(part => !part.Trim().StartsWith("Extensions=", StringComparison.OrdinalIgnoreCase))
