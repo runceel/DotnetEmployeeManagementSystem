@@ -20,7 +20,7 @@
             従業員管理システムにログインしてください
         </MudText>
 
-        <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin">
+        <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
             <DataAnnotationsValidator />
             
             <MudTextField 
