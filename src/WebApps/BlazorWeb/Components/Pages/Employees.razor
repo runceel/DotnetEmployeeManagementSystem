@@ -2,12 +2,26 @@
 @using Shared.Contracts.EmployeeService
 @using BlazorWeb.Services
 @inject IEmployeeApiClient EmployeeApiClient
+@inject AuthStateService AuthStateService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
 <PageTitle>従業員一覧 - 従業員管理システム</PageTitle>
 
 <MudText Typo="Typo.h3" GutterBottom="true">従業員一覧</MudText>
+
+@if (AuthStateService.IsAuthenticated)
+{
+    <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="mb-4">
+        ログイン中: @AuthStateService.CurrentUser?.UserName
+    </MudChip>
+}
+else
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        この機能を利用するには<MudLink Href="/login">ログイン</MudLink>することをお勧めします。
+    </MudAlert>
+}
 
 @if (_loading)
 {

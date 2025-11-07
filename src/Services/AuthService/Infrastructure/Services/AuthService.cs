@@ -1,8 +1,8 @@
-using AuthService.Application.DTOs;
 using AuthService.Application.Services;
 using AuthService.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using Shared.Contracts.AuthService;
 
 namespace AuthService.Infrastructure.Services;
 

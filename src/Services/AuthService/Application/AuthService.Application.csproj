@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\AuthService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Contracts\Shared.Contracts.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

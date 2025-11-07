@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Services\AuthService\Application\AuthService.Application.csproj" />
     <ProjectReference Include="..\..\src\Services\AuthService\Infrastructure\AuthService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Contracts\Shared.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
