@@ -18,29 +18,11 @@ public static class DependencyInjection
         this IServiceCollection services,
         string connectionString)
     {
-        // Remove unsupported Extensions parameter from connection string
-        var cleanedConnectionString = RemoveUnsupportedParameters(connectionString);
-        
         services.AddDbContext<EmployeeDbContext>(options =>
-            options.UseSqlite(cleanedConnectionString));
+            options.UseSqlite(connectionString));
 
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
         return services;
-    }
-
-    /// <summary>
-    /// Removes unsupported parameters from SQLite connection string
-    /// </summary>
-    private static string RemoveUnsupportedParameters(string connectionString)
-    {
-        ArgumentNullException.ThrowIfNull(connectionString);
-        
-        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
-        var cleanedParts = parts
-            .Where(part => !part.Trim().StartsWith("Extensions=", StringComparison.OrdinalIgnoreCase))
-            .Select(part => part.Trim());
-        
-        return string.Join(";", cleanedParts);
     }
 }
