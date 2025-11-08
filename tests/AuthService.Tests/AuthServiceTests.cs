@@ -2,6 +2,7 @@ using AuthService.Domain.Entities;
 using AuthService.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Shared.Contracts.AuthService;
@@ -42,7 +43,22 @@ public class AuthServiceTests : IDisposable
         // ロギングの設定
         services.AddLogging();
         
+        // Configuration for JWT
+        var inMemorySettings = new Dictionary<string, string?>
+        {
+            {"Jwt:SecretKey", "Test-Secret-Key-For-JWT-Token-Generation-Must-Be-At-Least-32-Characters-Long"},
+            {"Jwt:Issuer", "TestIssuer"},
+            {"Jwt:Audience", "TestAudience"},
+            {"Jwt:ExpirationMinutes", "60"}
+        };
+        
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(inMemorySettings)
+            .Build();
+        services.AddSingleton(configuration);
+        
         // AuthServiceの登録
+        services.AddScoped<Application.Services.IJwtTokenGenerator, Infrastructure.Services.JwtTokenGenerator>();
         services.AddScoped<Infrastructure.Services.AuthService>();
         
         _serviceProvider = services.BuildServiceProvider();
@@ -227,6 +243,74 @@ public class AuthServiceTests : IDisposable
         Assert.Equal(user.Id, result.UserId);
         Assert.Equal(user.UserName, result.UserName);
         Assert.Equal(user.Email, result.Email);
+    }
+
+    [Fact]
+    public async Task LoginAsync_WithValidCredentials_ReturnsValidJwtToken()
+    {
+        // Arrange
+        var password = "Password123!";
+        var user = new ApplicationUser
+        {
+            UserName = "jwtuser",
+            Email = "jwt@example.com"
+        };
+        await _userManager.CreateAsync(user, password);
+        await _userManager.AddToRoleAsync(user, "Admin");
+
+        var request = new LoginRequest
+        {
+            UserNameOrEmail = "jwtuser",
+            Password = password
+        };
+
+        // Act
+        var result = await _authService.LoginAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Token);
+
+        // JWTトークンをデコードして検証
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadToken(result.Token) as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
+        Assert.NotNull(jsonToken);
+
+        // クレームを検証
+        Assert.Equal(user.Id, jsonToken.Subject);
+        Assert.Equal("TestIssuer", jsonToken.Issuer);
+        Assert.Equal("TestAudience", jsonToken.Audiences.First());
+        Assert.Contains(jsonToken.Claims, c => c.Type == System.Security.Claims.ClaimTypes.Role && c.Value == "Admin");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithValidRequest_ReturnsValidJwtToken()
+    {
+        // Arrange
+        var request = new RegisterRequest
+        {
+            UserName = "jwtnewuser",
+            Email = "jwtnew@example.com",
+            Password = "Password123!"
+        };
+
+        // Act
+        var result = await _authService.RegisterAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Token);
+
+        // JWTトークンをデコードして検証
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadToken(result.Token) as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
+        Assert.NotNull(jsonToken);
+
+        // クレームを検証
+        Assert.Equal(request.UserName, jsonToken.Claims.First(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.UniqueName).Value);
+        Assert.Equal("TestIssuer", jsonToken.Issuer);
+        Assert.Equal("TestAudience", jsonToken.Audiences.First());
+        Assert.Contains(jsonToken.Claims, c => c.Type == System.Security.Claims.ClaimTypes.Role && c.Value == "User");
     }
 
     public void Dispose()

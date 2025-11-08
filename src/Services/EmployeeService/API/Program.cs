@@ -15,8 +15,28 @@ builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 
 // 認証・認可の設定
-builder.Services.AddAuthentication("CustomScheme")
-    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, CustomAuthenticationHandler>("CustomScheme", null);
+builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var secretKey = builder.Configuration["Jwt:SecretKey"] 
+            ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+        var issuer = builder.Configuration["Jwt:Issuer"] 
+            ?? throw new InvalidOperationException("JWT Issuer is not configured");
+        var audience = builder.Configuration["Jwt:Audience"] 
+            ?? throw new InvalidOperationException("JWT Audience is not configured");
+
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes(secretKey))
+        };
+    });
 builder.Services.AddAuthorization();
 
 // データベース接続文字列とInfrastructure層の初期化 (Test環境ではスキップ)

@@ -7,21 +7,24 @@ using Shared.Contracts.AuthService;
 namespace AuthService.Infrastructure.Services;
 
 /// <summary>
-/// 認証サービス実装（ダミー認証）
+/// 認証サービス実装（JWT認証）
 /// </summary>
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
+        IJwtTokenGenerator jwtTokenGenerator,
         ILogger<AuthService> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _jwtTokenGenerator = jwtTokenGenerator;
         _logger = logger;
     }
 
@@ -52,8 +55,8 @@ public class AuthService : IAuthService
             // ユーザーのロールを取得
             var roles = await _userManager.GetRolesAsync(user);
 
-            // ダミートークンを生成（実際のJWT実装は今後の課題）
-            var token = GenerateDummyToken(user);
+            // JWTトークンを生成
+            var token = _jwtTokenGenerator.GenerateToken(user, roles);
 
             return new AuthResponse
             {
@@ -116,8 +119,8 @@ public class AuthService : IAuthService
             // ユーザーのロールを取得
             var roles = await _userManager.GetRolesAsync(user);
 
-            // ダミートークンを生成
-            var token = GenerateDummyToken(user);
+            // JWTトークンを生成
+            var token = _jwtTokenGenerator.GenerateToken(user, roles);
 
             return new AuthResponse
             {
@@ -133,16 +136,5 @@ public class AuthService : IAuthService
             _logger.LogError(ex, "ユーザー登録処理中にエラーが発生しました");
             throw;
         }
-    }
-
-    /// <summary>
-    /// ダミートークンを生成（実際のJWT実装は今後の課題）
-    /// </summary>
-    private static string GenerateDummyToken(ApplicationUser user)
-    {
-        // Base64エンコードされたダミートークン
-        var tokenData = $"{user.Id}:{user.UserName}:{DateTime.UtcNow:O}";
-        var tokenBytes = System.Text.Encoding.UTF8.GetBytes(tokenData);
-        return Convert.ToBase64String(tokenBytes);
     }
 }

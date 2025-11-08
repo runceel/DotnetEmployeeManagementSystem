@@ -39,6 +39,7 @@ public static class DependencyInjection
 
         // Application層のサービス実装を登録
         services.AddScoped<IAuthService, Services.AuthService>();
+        services.AddScoped<IJwtTokenGenerator, Services.JwtTokenGenerator>();
 
         return services;
     }
