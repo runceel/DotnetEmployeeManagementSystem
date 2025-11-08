@@ -294,4 +294,143 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetDashboardStatistics_ShouldReturnEmptyStatistics_WhenNoEmployees()
+    {
+        // Act
+        var client = CreateClient();
+        var response = await client.GetAsync("/api/employees/dashboard/statistics");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var statistics = await response.Content.ReadFromJsonAsync<DashboardStatisticsDto>();
+        Assert.NotNull(statistics);
+        Assert.Equal(0, statistics.TotalEmployees);
+        Assert.Equal(0, statistics.DepartmentCount);
+        Assert.Equal(0, statistics.NewEmployeesThisMonth);
+    }
+
+    [Fact]
+    public async Task GetDashboardStatistics_ShouldReturnCorrectStatistics_WithMultipleEmployees()
+    {
+        // Arrange - Create multiple employees
+        var client = CreateClient();
+        
+        // Create employees in different departments
+        var request1 = new CreateEmployeeRequest
+        {
+            FirstName = "太郎",
+            LastName = "山田",
+            Email = "taro.yamada@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "エンジニア"
+        };
+        await client.PostAsJsonAsync("/api/employees", request1);
+
+        var request2 = new CreateEmployeeRequest
+        {
+            FirstName = "花子",
+            LastName = "佐藤",
+            Email = "hanako.sato@example.com",
+            HireDate = new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "営業部",
+            Position = "マネージャー"
+        };
+        await client.PostAsJsonAsync("/api/employees", request2);
+
+        var request3 = new CreateEmployeeRequest
+        {
+            FirstName = "次郎",
+            LastName = "鈴木",
+            Email = "jiro.suzuki@example.com",
+            HireDate = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "シニアエンジニア"
+        };
+        await client.PostAsJsonAsync("/api/employees", request3);
+
+        // Act
+        var response = await client.GetAsync("/api/employees/dashboard/statistics");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var statistics = await response.Content.ReadFromJsonAsync<DashboardStatisticsDto>();
+        Assert.NotNull(statistics);
+        Assert.Equal(3, statistics.TotalEmployees);
+        Assert.Equal(2, statistics.DepartmentCount); // 開発部 and 営業部
+        Assert.Equal(3, statistics.NewEmployeesThisMonth); // All created this month
+    }
+
+    [Fact]
+    public async Task GetRecentActivities_ShouldReturnEmptyList_WhenNoEmployees()
+    {
+        // Act
+        var client = CreateClient();
+        var response = await client.GetAsync("/api/employees/dashboard/recent-activities");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var activities = await response.Content.ReadFromJsonAsync<IEnumerable<RecentActivityDto>>();
+        Assert.NotNull(activities);
+        Assert.Empty(activities);
+    }
+
+    [Fact]
+    public async Task GetRecentActivities_ShouldReturnCreatedActivities_ForNewEmployees()
+    {
+        // Arrange - Create employees
+        var client = CreateClient();
+        var request = new CreateEmployeeRequest
+        {
+            FirstName = "太郎",
+            LastName = "山田",
+            Email = "taro.yamada@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "エンジニア"
+        };
+        await client.PostAsJsonAsync("/api/employees", request);
+
+        // Act
+        var response = await client.GetAsync("/api/employees/dashboard/recent-activities?count=5");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var activities = await response.Content.ReadFromJsonAsync<List<RecentActivityDto>>();
+        Assert.NotNull(activities);
+        Assert.Single(activities);
+        Assert.Equal("Created", activities[0].ActivityType);
+        Assert.Contains("山田 太郎", activities[0].EmployeeName);
+    }
+
+    [Fact]
+    public async Task GetRecentActivities_ShouldLimitResults_WhenCountParameterIsProvided()
+    {
+        // Arrange - Create multiple employees
+        var client = CreateClient();
+        for (int i = 0; i < 5; i++)
+        {
+            var request = new CreateEmployeeRequest
+            {
+                FirstName = $"太郎{i}",
+                LastName = "山田",
+                Email = $"employee{i}@example.com",
+                HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Department = "開発部",
+                Position = "エンジニア"
+            };
+            await client.PostAsJsonAsync("/api/employees", request);
+        }
+
+        // Act - Request only 3 activities
+        var response = await client.GetAsync("/api/employees/dashboard/recent-activities?count=3");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var activities = await response.Content.ReadFromJsonAsync<List<RecentActivityDto>>();
+        Assert.NotNull(activities);
+        Assert.Equal(3, activities.Count);
+    }
 }

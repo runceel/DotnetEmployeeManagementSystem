@@ -78,4 +78,73 @@ public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
         await _repository.DeleteAsync(id, cancellationToken);
         return true;
     }
+
+    public async Task<DashboardStatisticsDto> GetDashboardStatisticsAsync(CancellationToken cancellationToken = default)
+    {
+        var employees = await _repository.GetAllAsync(cancellationToken);
+        var employeeList = employees.ToList();
+
+        // 今月の新規登録数を計算
+        var now = DateTime.UtcNow;
+        var startOfMonth = new DateTime(now.Year, now.Month, 1);
+        var newEmployeesThisMonth = employeeList.Count(e => e.CreatedAt >= startOfMonth);
+
+        // 部署のユニーク数を計算
+        var departmentCount = employeeList
+            .Select(e => e.Department)
+            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Distinct()
+            .Count();
+
+        return new DashboardStatisticsDto
+        {
+            TotalEmployees = employeeList.Count,
+            DepartmentCount = departmentCount,
+            NewEmployeesThisMonth = newEmployeesThisMonth
+        };
+    }
+
+    public async Task<IEnumerable<RecentActivityDto>> GetRecentActivitiesAsync(int count = 10, CancellationToken cancellationToken = default)
+    {
+        var employees = await _repository.GetAllAsync(cancellationToken);
+        var employeeList = employees.ToList();
+
+        // 従業員の作成・更新イベントをアクティビティとして扱う
+        var activities = new List<RecentActivityDto>();
+
+        foreach (var employee in employeeList)
+        {
+            var fullName = employee.GetFullName();
+
+            // 作成イベント
+            activities.Add(new RecentActivityDto
+            {
+                Id = Guid.NewGuid(),
+                ActivityType = "Created",
+                EmployeeId = employee.Id,
+                EmployeeName = fullName,
+                Description = $"{fullName}さんが登録されました",
+                Timestamp = employee.CreatedAt
+            });
+
+            // 更新イベント (作成時刻と更新時刻が異なる場合のみ)
+            if (employee.UpdatedAt > employee.CreatedAt.AddSeconds(1))
+            {
+                activities.Add(new RecentActivityDto
+                {
+                    Id = Guid.NewGuid(),
+                    ActivityType = "Updated",
+                    EmployeeId = employee.Id,
+                    EmployeeName = fullName,
+                    Description = $"{fullName}さんの情報が更新されました",
+                    Timestamp = employee.UpdatedAt
+                });
+            }
+        }
+
+        // タイムスタンプでソートして最新のものを返す
+        return activities
+            .OrderByDescending(a => a.Timestamp)
+            .Take(count);
+    }
 }

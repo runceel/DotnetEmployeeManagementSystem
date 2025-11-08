@@ -154,6 +154,24 @@ employees.MapDelete("/{id:guid}", async (Guid id, IEmployeeService employeeServi
 .Produces(StatusCodes.Status204NoContent)
 .Produces(StatusCodes.Status404NotFound);
 
+// ダッシュボード統計情報を取得
+employees.MapGet("/dashboard/statistics", async (IEmployeeService employeeService) =>
+{
+    var result = await employeeService.GetDashboardStatisticsAsync();
+    return Results.Ok(result);
+})
+.WithName("GetDashboardStatistics")
+.Produces<DashboardStatisticsDto>();
+
+// 最近のアクティビティを取得
+employees.MapGet("/dashboard/recent-activities", async (IEmployeeService employeeService, [FromQuery] int count = 10) =>
+{
+    var result = await employeeService.GetRecentActivitiesAsync(count);
+    return Results.Ok(result);
+})
+.WithName("GetRecentActivities")
+.Produces<IEnumerable<RecentActivityDto>>();
+
 app.Run();
 
 // Make Program class accessible for integration tests
