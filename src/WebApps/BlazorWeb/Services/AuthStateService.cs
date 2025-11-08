@@ -26,6 +26,11 @@ public class AuthStateService
     public bool IsAuthenticated => _currentUser != null;
 
     /// <summary>
+    /// ユーザーが管理者かどうか
+    /// </summary>
+    public bool IsAdmin => _currentUser?.Roles?.Contains("Admin") ?? false;
+
+    /// <summary>
     /// 認証状態変更イベント
     /// </summary>
     public event Action? OnAuthStateChanged;
@@ -36,7 +41,8 @@ public class AuthStateService
     public void Login(AuthResponse user)
     {
         _currentUser = user;
-        _logger.LogInformation("User logged in: {UserName}", user.UserName);
+        _logger.LogInformation("User logged in: {UserName} with roles: {Roles}", 
+            user.UserName, string.Join(", ", user.Roles));
         NotifyAuthStateChanged();
     }
 

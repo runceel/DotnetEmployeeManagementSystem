@@ -10,12 +10,33 @@ public class EmployeeApiClient : IEmployeeApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<EmployeeApiClient> _logger;
+    private readonly AuthStateService _authStateService;
     private const string ApiBasePath = "/api/employees";
 
-    public EmployeeApiClient(HttpClient httpClient, ILogger<EmployeeApiClient> logger)
+    public EmployeeApiClient(
+        HttpClient httpClient, 
+        ILogger<EmployeeApiClient> logger,
+        AuthStateService authStateService)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _authStateService = authStateService;
+    }
+
+    /// <summary>
+    /// HTTPリクエストに認証ヘッダーを追加
+    /// </summary>
+    private void AddAuthHeaders(HttpRequestMessage request)
+    {
+        if (_authStateService.CurrentUser is not null)
+        {
+            request.Headers.Add("X-User-Id", _authStateService.CurrentUser.UserId);
+            request.Headers.Add("X-User-Name", _authStateService.CurrentUser.UserName);
+            if (_authStateService.CurrentUser.Roles.Any())
+            {
+                request.Headers.Add("X-User-Roles", string.Join(",", _authStateService.CurrentUser.Roles));
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -89,16 +110,25 @@ public class EmployeeApiClient : IEmployeeApiClient
         {
             _logger.LogInformation("Creating new employee: {FirstName} {LastName}", request.FirstName, request.LastName);
             
-            var response = await _httpClient.PostAsJsonAsync(
-                ApiBasePath, 
-                request, 
-                cancellationToken);
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, ApiBasePath)
+            {
+                Content = JsonContent.Create(request)
+            };
+            AddAuthHeaders(httpRequest);
+
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Failed to create employee. Status: {StatusCode}, Error: {Error}", 
                     response.StatusCode, errorContent);
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new UnauthorizedAccessException("この操作を実行する権限がありません。");
+                }
+                
                 throw new InvalidOperationException($"従業員の作成に失敗しました。（エラー: {response.StatusCode}）");
             }
             
@@ -116,7 +146,7 @@ public class EmployeeApiClient : IEmployeeApiClient
             _logger.LogError(ex, "HTTP request failed while creating employee");
             throw new InvalidOperationException("従業員の作成に失敗しました。", ex);
         }
-        catch (Exception ex) when (ex is not InvalidOperationException)
+        catch (Exception ex) when (ex is not InvalidOperationException and not UnauthorizedAccessException)
         {
             _logger.LogError(ex, "Unexpected error while creating employee");
             throw new InvalidOperationException("従業員の作成中に予期しないエラーが発生しました。", ex);
@@ -130,10 +160,13 @@ public class EmployeeApiClient : IEmployeeApiClient
         {
             _logger.LogInformation("Updating employee with ID: {EmployeeId}", id);
             
-            var response = await _httpClient.PutAsJsonAsync(
-                $"{ApiBasePath}/{id}", 
-                request, 
-                cancellationToken);
+            var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"{ApiBasePath}/{id}")
+            {
+                Content = JsonContent.Create(request)
+            };
+            AddAuthHeaders(httpRequest);
+
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -146,6 +179,12 @@ public class EmployeeApiClient : IEmployeeApiClient
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Failed to update employee. Status: {StatusCode}, Error: {Error}", 
                     response.StatusCode, errorContent);
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new UnauthorizedAccessException("この操作を実行する権限がありません。");
+                }
+                
                 throw new InvalidOperationException($"従業員の更新に失敗しました。（エラー: {response.StatusCode}）");
             }
             
@@ -158,7 +197,7 @@ public class EmployeeApiClient : IEmployeeApiClient
             _logger.LogError(ex, "HTTP request failed while updating employee with ID: {EmployeeId}", id);
             throw new InvalidOperationException($"従業員（ID: {id}）の更新に失敗しました。", ex);
         }
-        catch (Exception ex) when (ex is not InvalidOperationException)
+        catch (Exception ex) when (ex is not InvalidOperationException and not UnauthorizedAccessException)
         {
             _logger.LogError(ex, "Unexpected error while updating employee with ID: {EmployeeId}", id);
             throw new InvalidOperationException($"従業員（ID: {id}）の更新中に予期しないエラーが発生しました。", ex);

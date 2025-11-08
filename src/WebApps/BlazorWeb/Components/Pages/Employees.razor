@@ -2,14 +2,28 @@
 @rendermode InteractiveServer
 @using Shared.Contracts.EmployeeService
 @using BlazorWeb.Services
+@using BlazorWeb.Models
+@using BlazorWeb.Components.Dialogs
 @inject IEmployeeApiClient EmployeeApiClient
 @inject AuthStateService AuthStateService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <PageTitle>従業員一覧 - 従業員管理システム</PageTitle>
 
-<MudText Typo="Typo.h3" GutterBottom="true">従業員一覧</MudText>
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h3">従業員一覧</MudText>
+    @if (AuthStateService.IsAdmin)
+    {
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog">
+            従業員を追加
+        </MudButton>
+    }
+</div>
 
 @if (AuthStateService.IsAuthenticated)
 {
@@ -54,7 +68,14 @@ else
             <MudTh>部署</MudTh>
             <MudTh>役職</MudTh>
             <MudTh>入社日</MudTh>
-            <MudTh>アクション</MudTh>
+            @if (AuthStateService.IsAdmin)
+            {
+                <MudTh>アクション</MudTh>
+            }
+            else
+            {
+                <MudTh>詳細</MudTh>
+            }
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="ID">@context.Id.ToString("N")[..8]...</MudTd>
@@ -64,13 +85,32 @@ else
             <MudTd DataLabel="役職">@context.Position</MudTd>
             <MudTd DataLabel="入社日">@context.HireDate.ToString("yyyy/MM/dd")</MudTd>
             <MudTd DataLabel="アクション">
-                <MudButton 
-                    Variant="Variant.Text" 
-                    Color="Color.Primary" 
-                    Size="Size.Small"
-                    OnClick="@(() => NavigateToDetail(context.Id))">
-                    詳細
-                </MudButton>
+                @if (AuthStateService.IsAdmin)
+                {
+                    <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
+                        <MudButton Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="@(() => OpenEditDialog(context))">
+                            編集
+                        </MudButton>
+                        <MudButton Color="Color.Info"
+                                   StartIcon="@Icons.Material.Filled.Visibility"
+                                   OnClick="@(() => NavigateToDetail(context.Id))">
+                            詳細
+                        </MudButton>
+                    </MudButtonGroup>
+                }
+                else
+                {
+                    <MudButton 
+                        Variant="Variant.Text" 
+                        Color="Color.Primary" 
+                        Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.Visibility"
+                        OnClick="@(() => NavigateToDetail(context.Id))">
+                        詳細
+                    </MudButton>
+                }
             </MudTd>
         </RowTemplate>
     </MudTable>
@@ -117,5 +157,124 @@ else
     private void NavigateToDetail(Guid id)
     {
         Navigation.NavigateTo($"/employees/{id}");
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<EmployeeFormDialog>
+        {
+            { x => x.Model, new EmployeeFormModel() }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Small, 
+            FullWidth = true 
+        };
+
+        var dialog = await DialogService.ShowAsync<EmployeeFormDialog>("従業員を追加", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is EmployeeFormModel model)
+        {
+            await CreateEmployee(model);
+        }
+    }
+
+    private async Task OpenEditDialog(EmployeeDto employee)
+    {
+        var model = new EmployeeFormModel
+        {
+            FirstName = employee.FirstName,
+            LastName = employee.LastName,
+            Email = employee.Email,
+            Department = employee.Department,
+            Position = employee.Position,
+            HireDate = employee.HireDate
+        };
+
+        var parameters = new DialogParameters<EmployeeFormDialog>
+        {
+            { x => x.Model, model }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Small, 
+            FullWidth = true 
+        };
+
+        var dialog = await DialogService.ShowAsync<EmployeeFormDialog>("従業員を編集", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is EmployeeFormModel updatedModel)
+        {
+            await UpdateEmployee(employee.Id, updatedModel);
+        }
+    }
+
+    private async Task CreateEmployee(EmployeeFormModel model)
+    {
+        try
+        {
+            var request = new CreateEmployeeRequest
+            {
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Department = model.Department,
+                Position = model.Position,
+                HireDate = model.HireDate
+            };
+
+            await EmployeeApiClient.CreateEmployeeAsync(request);
+            Snackbar.Add("従業員を追加しました。", Severity.Success);
+            await LoadEmployees();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateEmployee(Guid id, EmployeeFormModel model)
+    {
+        try
+        {
+            var request = new UpdateEmployeeRequest
+            {
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Department = model.Department,
+                Position = model.Position,
+                HireDate = model.HireDate
+            };
+
+            var result = await EmployeeApiClient.UpdateEmployeeAsync(id, request);
+            if (result is not null)
+            {
+                Snackbar.Add("従業員情報を更新しました。", Severity.Success);
+                await LoadEmployees();
+            }
+            else
+            {
+                Snackbar.Add("従業員が見つかりませんでした。", Severity.Warning);
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
     }
 }

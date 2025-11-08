@@ -51,6 +51,11 @@ public class AuthServiceTests : IDisposable
         var context = _serviceProvider.GetRequiredService<AuthDbContext>();
         context.Database.EnsureCreated();
         
+        // ロールの初期化
+        var roleManager = _serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        roleManager.CreateAsync(new IdentityRole("Admin")).GetAwaiter().GetResult();
+        roleManager.CreateAsync(new IdentityRole("User")).GetAwaiter().GetResult();
+        
         _authService = _serviceProvider.GetRequiredService<Infrastructure.Services.AuthService>();
         _userManager = _serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     }
