@@ -25,7 +25,7 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Use a unique database name per test to isolate test data
         var dbName = $"TestDb_{Guid.NewGuid()}";
         
-        return _baseFactory.WithWebHostBuilder(builder =>
+        var client = _baseFactory.WithWebHostBuilder(builder =>
         {
             // Skip database initialization by setting environment to Test
             builder.UseEnvironment("Test");
@@ -47,6 +47,13 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
                     EmployeeService.Infrastructure.Repositories.EmployeeRepository>();
             });
         }).CreateClient();
+
+        // Add admin authentication headers for create/update tests
+        client.DefaultRequestHeaders.Add("X-User-Id", "admin-test");
+        client.DefaultRequestHeaders.Add("X-User-Name", "admin");
+        client.DefaultRequestHeaders.Add("X-User-Roles", "Admin");
+
+        return client;
     }
 
     [Fact]
