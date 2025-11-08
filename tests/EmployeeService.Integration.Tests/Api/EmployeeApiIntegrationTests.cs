@@ -1,9 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using EmployeeService.Infrastructure.Data;
+using EmployeeService.Integration.Tests.Helpers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -27,8 +30,19 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
         
         var client = _baseFactory.WithWebHostBuilder(builder =>
         {
-            // Skip database initialization by setting environment to Test
             builder.UseEnvironment("Test");
+
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                // Add JWT configuration for testing
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Jwt:SecretKey"] = "Development-Secret-Key-For-JWT-Token-Generation-Must-Be-At-Least-32-Characters-Long",
+                    ["Jwt:Issuer"] = "EmployeeManagementSystem.AuthService",
+                    ["Jwt:Audience"] = "EmployeeManagementSystem.API",
+                    ["Jwt:ExpirationMinutes"] = "120"
+                });
+            });
 
             builder.ConfigureServices(services =>
             {
@@ -48,10 +62,9 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
             });
         }).CreateClient();
 
-        // Add admin authentication headers for create/update tests
-        client.DefaultRequestHeaders.Add("X-User-Id", "admin-test");
-        client.DefaultRequestHeaders.Add("X-User-Name", "admin");
-        client.DefaultRequestHeaders.Add("X-User-Roles", "Admin");
+        // Add admin JWT Bearer token for create/update tests
+        var token = JwtTokenHelper.GenerateToken("admin-test", "admin", "Admin");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         return client;
     }

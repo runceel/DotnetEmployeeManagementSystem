@@ -1,9 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using EmployeeService.Infrastructure.Data;
+using EmployeeService.Integration.Tests.Helpers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -28,6 +31,18 @@ public class EmployeeAuthorizationTests : IClassFixture<WebApplicationFactory<Pr
         {
             builder.UseEnvironment("Test");
 
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                // Add JWT configuration for testing
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Jwt:SecretKey"] = "Development-Secret-Key-For-JWT-Token-Generation-Must-Be-At-Least-32-Characters-Long",
+                    ["Jwt:Issuer"] = "EmployeeManagementSystem.AuthService",
+                    ["Jwt:Audience"] = "EmployeeManagementSystem.API",
+                    ["Jwt:ExpirationMinutes"] = "120"
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<EmployeeDbContext>>();
@@ -43,18 +58,12 @@ public class EmployeeAuthorizationTests : IClassFixture<WebApplicationFactory<Pr
             });
         }).CreateClient();
 
-        // Add authentication headers if provided
-        if (!string.IsNullOrEmpty(userId))
+        // Add JWT Bearer token if authentication info is provided
+        if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userName))
         {
-            client.DefaultRequestHeaders.Add("X-User-Id", userId);
-        }
-        if (!string.IsNullOrEmpty(userName))
-        {
-            client.DefaultRequestHeaders.Add("X-User-Name", userName);
-        }
-        if (!string.IsNullOrEmpty(roles))
-        {
-            client.DefaultRequestHeaders.Add("X-User-Roles", roles);
+            var roleArray = string.IsNullOrEmpty(roles) ? Array.Empty<string>() : roles.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(r => r.Trim()).ToArray();
+            var token = JwtTokenHelper.GenerateToken(userId, userName, roleArray);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
         return client;
@@ -217,6 +226,18 @@ public class EmployeeAuthorizationTests : IClassFixture<WebApplicationFactory<Pr
         {
             builder.UseEnvironment("Test");
 
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                // Add JWT configuration for testing
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Jwt:SecretKey"] = "Development-Secret-Key-For-JWT-Token-Generation-Must-Be-At-Least-32-Characters-Long",
+                    ["Jwt:Issuer"] = "EmployeeManagementSystem.AuthService",
+                    ["Jwt:Audience"] = "EmployeeManagementSystem.API",
+                    ["Jwt:ExpirationMinutes"] = "120"
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<EmployeeDbContext>>();
@@ -232,18 +253,12 @@ public class EmployeeAuthorizationTests : IClassFixture<WebApplicationFactory<Pr
             });
         }).CreateClient();
 
-        // Add authentication headers if provided
-        if (!string.IsNullOrEmpty(userId))
+        // Add JWT Bearer token if authentication info is provided
+        if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userName))
         {
-            client.DefaultRequestHeaders.Add("X-User-Id", userId);
-        }
-        if (!string.IsNullOrEmpty(userName))
-        {
-            client.DefaultRequestHeaders.Add("X-User-Name", userName);
-        }
-        if (!string.IsNullOrEmpty(roles))
-        {
-            client.DefaultRequestHeaders.Add("X-User-Roles", roles);
+            var roleArray = string.IsNullOrEmpty(roles) ? Array.Empty<string>() : roles.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(r => r.Trim()).ToArray();
+            var token = JwtTokenHelper.GenerateToken(userId, userName, roleArray);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
         return client;
