@@ -3,6 +3,7 @@ using EmployeeService.Infrastructure;
 using EmployeeService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.EmployeeService;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,11 @@ builder.AddServiceDefaults();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// 認証・認可の設定
+builder.Services.AddAuthentication("CustomScheme")
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, CustomAuthenticationHandler>("CustomScheme", null);
+builder.Services.AddAuthorization();
 
 // データベース接続文字列とInfrastructure層の初期化 (Test環境ではスキップ)
 if (!builder.Environment.IsEnvironment("Test"))
@@ -43,6 +49,9 @@ if (app.Environment.IsDevelopment())
 app.MapDefaultEndpoints();
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Employee API endpoints
 var employees = app.MapGroup("/api/employees")
@@ -87,7 +96,9 @@ employees.MapPost("/", async ([FromBody] CreateEmployeeRequest request, IEmploye
 })
 .WithName("CreateEmployee")
 .Produces<EmployeeDto>(StatusCodes.Status201Created)
-.Produces(StatusCodes.Status400BadRequest);
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status403Forbidden)
+.RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 // 従業員を更新
 employees.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateEmployeeRequest request, IEmployeeService employeeService) =>
@@ -109,7 +120,9 @@ employees.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateEmployeeRequest 
 .WithName("UpdateEmployee")
 .Produces<EmployeeDto>()
 .Produces(StatusCodes.Status404NotFound)
-.Produces(StatusCodes.Status400BadRequest);
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status403Forbidden)
+.RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 // 従業員を削除
 employees.MapDelete("/{id:guid}", async (Guid id, IEmployeeService employeeService) =>

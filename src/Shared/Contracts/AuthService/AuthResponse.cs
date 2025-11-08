@@ -24,4 +24,9 @@ public record AuthResponse
     /// 認証トークン（ダミー実装のため固定値）
     /// </summary>
     public required string Token { get; init; }
+
+    /// <summary>
+    /// ユーザーのロール一覧
+    /// </summary>
+    public IEnumerable<string> Roles { get; init; } = [];
 }

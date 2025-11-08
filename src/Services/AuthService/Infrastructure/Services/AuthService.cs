@@ -49,6 +49,9 @@ public class AuthService : IAuthService
 
             _logger.LogInformation("ログイン成功: {UserName}", user.UserName);
 
+            // ユーザーのロールを取得
+            var roles = await _userManager.GetRolesAsync(user);
+
             // ダミートークンを生成（実際のJWT実装は今後の課題）
             var token = GenerateDummyToken(user);
 
@@ -57,7 +60,8 @@ public class AuthService : IAuthService
                 UserId = user.Id,
                 UserName = user.UserName!,
                 Email = user.Email!,
-                Token = token
+                Token = token,
+                Roles = roles
             };
         }
         catch (Exception ex)
@@ -104,7 +108,13 @@ public class AuthService : IAuthService
                 return null;
             }
 
+            // デフォルトでUserロールを割り当て
+            await _userManager.AddToRoleAsync(user, "User");
+
             _logger.LogInformation("ユーザー登録成功: {UserName}", user.UserName);
+
+            // ユーザーのロールを取得
+            var roles = await _userManager.GetRolesAsync(user);
 
             // ダミートークンを生成
             var token = GenerateDummyToken(user);
@@ -114,7 +124,8 @@ public class AuthService : IAuthService
                 UserId = user.Id,
                 UserName = user.UserName,
                 Email = user.Email,
-                Token = token
+                Token = token,
+                Roles = roles
             };
         }
         catch (Exception ex)
