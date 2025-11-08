@@ -30,6 +30,7 @@ Aspireダッシュボードが自動的に開き、すべてのサービスを�
 
 - **[Getting Started](docs/getting-started.md)** - セットアップと実行の詳細手順
 - **[アーキテクチャ概要](docs/architecture.md)** - システム設計とアーキテクチャ
+- **[詳細アーキテクチャ設計書](docs/architecture-detailed.md)** - 技術的な詳細設計（推奨）
 - **[開発ガイド](docs/development-guide.md)** - 開発者向けガイドライン
 - **[Aspireダッシュボード](docs/aspire-dashboard.md)** - 監視と管理
 - **[データベース管理](docs/database.md)** - マイグレーションとベストプラクティス
@@ -85,7 +86,8 @@ DotnetEmployeeManagementSystem/
 ### アーキテクチャ
 システムは .NET Aspire を使用したマイクロサービスアーキテクチャで構成されています。各サービスは独立して開発・デプロイ可能で、ServiceDefaults による統一された可観測性を提供します。
 
-詳細は [アーキテクチャドキュメント](docs/architecture.md) を参照してください。
+- [アーキテクチャ概要](docs/architecture.md) - 高レベルアーキテクチャと設計原則
+- [詳細アーキテクチャ設計書](docs/architecture-detailed.md) - 技術スタック詳細、データフロー、デプロイメント戦略
 
 ### 開発
 新機能の追加、テストの作成、デバッグ方法については [開発ガイド](docs/development-guide.md) を参照してください。
