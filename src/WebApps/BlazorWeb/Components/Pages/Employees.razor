@@ -90,7 +90,7 @@ else
                     <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
                         <MudButton Color="Color.Primary" 
                                    StartIcon="@Icons.Material.Filled.Edit"
-                                   OnClick="@(() => OpenEditDialog(context))">
+                                   OnClick="@(async () => await OpenEditDialog(context))">
                             編集
                         </MudButton>
                         <MudButton Color="Color.Info"
