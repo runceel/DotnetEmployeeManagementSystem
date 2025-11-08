@@ -31,4 +31,14 @@ public interface IEmployeeApiClient
     /// 従業員を削除
     /// </summary>
     Task<bool> DeleteEmployeeAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ダッシュボード統計情報を取得
+    /// </summary>
+    Task<DashboardStatisticsDto> GetDashboardStatisticsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 最近のアクティビティを取得
+    /// </summary>
+    Task<IEnumerable<RecentActivityDto>> GetRecentActivitiesAsync(int count = 10, CancellationToken cancellationToken = default);
 }

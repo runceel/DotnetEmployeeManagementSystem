@@ -237,4 +237,61 @@ public class EmployeeApiClient : IEmployeeApiClient
             throw new InvalidOperationException($"従業員（ID: {id}）の削除中に予期しないエラーが発生しました。", ex);
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<DashboardStatisticsDto> GetDashboardStatisticsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching dashboard statistics from API");
+            
+            var statistics = await _httpClient.GetFromJsonAsync<DashboardStatisticsDto>(
+                $"{ApiBasePath}/dashboard/statistics", 
+                cancellationToken);
+            
+            if (statistics is null)
+            {
+                throw new InvalidOperationException("ダッシュボード統計情報の取得に失敗しました。");
+            }
+
+            _logger.LogInformation("Successfully fetched dashboard statistics");
+            return statistics;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request failed while fetching dashboard statistics");
+            throw new InvalidOperationException("ダッシュボード統計情報の取得に失敗しました。", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while fetching dashboard statistics");
+            throw new InvalidOperationException("ダッシュボード統計情報の取得中に予期しないエラーが発生しました。", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<RecentActivityDto>> GetRecentActivitiesAsync(int count = 10, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching recent activities from API");
+            
+            var activities = await _httpClient.GetFromJsonAsync<IEnumerable<RecentActivityDto>>(
+                $"{ApiBasePath}/dashboard/recent-activities?count={count}", 
+                cancellationToken);
+            
+            _logger.LogInformation("Successfully fetched {Count} recent activities", activities?.Count() ?? 0);
+            return activities ?? Enumerable.Empty<RecentActivityDto>();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request failed while fetching recent activities");
+            throw new InvalidOperationException("最近のアクティビティの取得に失敗しました。", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while fetching recent activities");
+            throw new InvalidOperationException("最近のアクティビティの取得中に予期しないエラーが発生しました。", ex);
+        }
+    }
 }
