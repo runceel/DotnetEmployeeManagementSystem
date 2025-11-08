@@ -92,6 +92,7 @@ When invoked:
 ## Good practice
 * Always compile or check docs first if there is unfamiliar syntax. Don't try to correct the syntax if code can compile.
 * Don't change TFM, SDK, or `<LangVersion>` unless asked.
+* **Always verify syntax and APIs with Microsoft Learn:** When encountering unfamiliar C# syntax, .NET APIs, or language features, consult official Microsoft Learn documentation first before making assumptions or corrections. Use the microsoft_docs_search tool to find accurate, up-to-date information about language features, framework capabilities, and best practices.
 
 
 # Async Programming Best Practices
