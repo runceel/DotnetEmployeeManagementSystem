@@ -1,11 +1,63 @@
 @page "/dashboard"
 @rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
+@inject BlazorWeb.Services.IEmployeeApiClient EmployeeApiClient
+@using Shared.Contracts.EmployeeService
 
 <PageTitle>ダッシュボード - 従業員管理システム</PageTitle>
 
 <MudText Typo="Typo.h3" GutterBottom="true">ダッシュボード</MudText>
 <MudText Typo="Typo.body1" Class="mb-4">システムの概要と統計情報</MudText>
+
+@if (_isLoading)
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="3rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="3rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="3rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="3rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+    return;
+}
+
+@if (_hasError)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        データの取得に失敗しました。@_errorMessage
+    </MudAlert>
+}
 
 <MudGrid>
     <MudItem xs="12" sm="6" md="3">
@@ -58,29 +110,28 @@
                 </CardHeaderContent>
             </MudCardHeader>
             <MudCardContent>
-                <MudTimeline TimelineOrientation="TimelineOrientation.Vertical" TimelinePosition="TimelinePosition.Start">
-                    <MudTimelineItem Color="Color.Success" Elevation="2">
-                        <ItemContent>
-                            <MudText Typo="Typo.body1"><strong>新規従業員登録</strong></MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">山田太郎さんが登録されました</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">2時間前</MudText>
-                        </ItemContent>
-                    </MudTimelineItem>
-                    <MudTimelineItem Color="Color.Info" Elevation="2">
-                        <ItemContent>
-                            <MudText Typo="Typo.body1"><strong>情報更新</strong></MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">佐藤花子さんの部署が変更されました</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">5時間前</MudText>
-                        </ItemContent>
-                    </MudTimelineItem>
-                    <MudTimelineItem Color="Color.Warning" Elevation="2">
-                        <ItemContent>
-                            <MudText Typo="Typo.body1"><strong>システムメンテナンス</strong></MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">定期メンテナンスが完了しました</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">1日前</MudText>
-                        </ItemContent>
-                    </MudTimelineItem>
-                </MudTimeline>
+                @if (_recentActivities.Any())
+                {
+                    <MudTimeline TimelineOrientation="TimelineOrientation.Vertical" TimelinePosition="TimelinePosition.Start">
+                        @foreach (var activity in _recentActivities)
+                        {
+                            var color = activity.ActivityType == "Created" ? Color.Success : Color.Info;
+                            var title = activity.ActivityType == "Created" ? "新規従業員登録" : "情報更新";
+                            
+                            <MudTimelineItem Color="@color" Elevation="2">
+                                <ItemContent>
+                                    <MudText Typo="Typo.body1"><strong>@title</strong></MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@activity.Description</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@GetRelativeTime(activity.Timestamp)</MudText>
+                                </ItemContent>
+                            </MudTimelineItem>
+                        }
+                    </MudTimeline>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">最近のアクティビティはありません</MudText>
+                }
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -144,23 +195,51 @@
 </MudGrid>
 
 @code {
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    
     private int _totalEmployees = 0;
     private int _activeUsers = 0;
     private int _departments = 0;
     private int _newThisMonth = 0;
     private string _employeeServiceStatus = "確認中...";
     private string _authServiceStatus = "確認中...";
+    private List<RecentActivityDto> _recentActivities = new();
 
     protected override async Task OnInitializedAsync()
     {
-        // Sample data for demonstration
-        _totalEmployees = 42;
-        _activeUsers = 12;
-        _departments = 8;
-        _newThisMonth = 5;
+        _isLoading = true;
+        _hasError = false;
 
-        // Check service status
-        await CheckServicesStatus();
+        try
+        {
+            // ダッシュボード統計情報を取得
+            var statistics = await EmployeeApiClient.GetDashboardStatisticsAsync();
+            _totalEmployees = statistics.TotalEmployees;
+            _departments = statistics.DepartmentCount;
+            _newThisMonth = statistics.NewEmployeesThisMonth;
+
+            // アクティブユーザー数は総従業員数をベースに表示（暫定）
+            // TODO: AuthServiceと連携して実際のアクティブユーザー数を取得
+            _activeUsers = _totalEmployees > 0 ? (int)(_totalEmployees * 0.3) : 0;
+
+            // 最近のアクティビティを取得
+            var activities = await EmployeeApiClient.GetRecentActivitiesAsync(5);
+            _recentActivities = activities.ToList();
+
+            // サービスステータスをチェック
+            await CheckServicesStatus();
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private async Task CheckServicesStatus()
@@ -186,5 +265,25 @@
         {
             _authServiceStatus = "接続不可";
         }
+    }
+
+    private string GetRelativeTime(DateTime timestamp)
+    {
+        var now = DateTime.UtcNow;
+        var diff = now - timestamp;
+
+        if (diff.TotalMinutes < 1)
+            return "たった今";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}分前";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}時間前";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}日前";
+        if (diff.TotalDays < 30)
+            return $"{(int)(diff.TotalDays / 7)}週間前";
+        if (diff.TotalDays < 365)
+            return $"{(int)(diff.TotalDays / 30)}ヶ月前";
+        return $"{(int)(diff.TotalDays / 365)}年前";
     }
 }
