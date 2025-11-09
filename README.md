@@ -32,6 +32,7 @@ Aspireダッシュボードが自動的に開き、すべてのサービスを�
 - **[アーキテクチャ概要](docs/architecture.md)** - システム設計とアーキテクチャ
 - **[詳細アーキテクチャ設計書](docs/architecture-detailed.md)** - 技術的な詳細設計（推奨）
 - **[開発ガイド](docs/development-guide.md)** - 開発者向けガイドライン
+- **[通知サービス実装ガイド](docs/notification-service.md)** - イベント駆動通知システム
 - **[Aspireダッシュボード](docs/aspire-dashboard.md)** - 監視と管理
 - **[データベース管理](docs/database.md)** - マイグレーションとベストプラクティス
 
@@ -48,7 +49,12 @@ DotnetEmployeeManagementSystem/
 │   │   │   ├── Application/         # ビジネスロジック
 │   │   │   ├── Infrastructure/      # データアクセス
 │   │   │   └── API/                 # Web API
-│   │   └── AuthService/             # 認証サービス
+│   │   ├── AuthService/             # 認証サービス
+│   │   │   └── API/
+│   │   └── NotificationService/     # 通知サービス
+│   │       ├── Domain/
+│   │       ├── Application/
+│   │       ├── Infrastructure/
 │   │       └── API/
 │   ├── WebApps/
 │   │   └── BlazorWeb/               # Blazor Web App（UI）
@@ -67,6 +73,7 @@ DotnetEmployeeManagementSystem/
 | フロントエンド | Blazor Web App + MudBlazor |
 | データアクセス | Entity Framework Core 9 |
 | データベース | SQLite（開発・Aspire統合）、Azure SQL（本番予定） |
+| メッセージング | Redis (Pub/Sub) |
 | 認証 | ASP.NET Core Identity |
 | 可観測性 | OpenTelemetry（トレース、メトリクス、ログ） |
 | ヘルスチェック | ASP.NET Core Health Checks |
@@ -76,6 +83,7 @@ DotnetEmployeeManagementSystem/
 
 - **マイクロサービスアーキテクチャ**: 疎結合で拡張性の高い設計
 - **クリーンアーキテクチャ**: Domain駆動設計による保守性の向上
+- **イベント駆動通知**: Redisを使用したリアルタイム通知システム
 - **分散トレーシング**: OpenTelemetryによる完全な可観測性
 - **Aspireダッシュボード**: リアルタイムの監視とデバッグ
 - **自動サービスディスカバリー**: Aspireによる動的なサービス検出

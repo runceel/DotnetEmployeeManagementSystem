@@ -49,6 +49,7 @@ graph TB
     subgraph "マイクロサービス層"
         EmployeeAPI[EmployeeService.API<br/>従業員管理サービス<br/>REST API]
         AuthAPI[AuthService.API<br/>認証・認可サービス<br/>ASP.NET Core Identity]
+        NotificationAPI[NotificationService.API<br/>通知サービス<br/>イベント駆動通知]
     end
     
     subgraph "共通基盤"
@@ -59,6 +60,11 @@ graph TB
     subgraph "データ層"
         EmployeeDB[(SQLite<br/>employeedb)]
         AuthDB[(SQLite<br/>authdb)]
+        NotificationDB[(SQLite<br/>notificationdb)]
+    end
+    
+    subgraph "メッセージング層"
+        Redis[Redis<br/>Pub/Sub]
     end
     
     subgraph "可観測性"
@@ -71,22 +77,32 @@ graph TB
     AppHost -->|起動・管理| BlazorWeb
     AppHost -->|起動・管理| EmployeeAPI
     AppHost -->|起動・管理| AuthAPI
+    AppHost -->|起動・管理| NotificationAPI
     AppHost -->|構成| EmployeeDB
     AppHost -->|構成| AuthDB
+    AppHost -->|構成| NotificationDB
+    AppHost -->|構成| Redis
     AppHost -->|監視| Dashboard
     
     BlazorWeb -->|HTTP/REST| EmployeeAPI
     BlazorWeb -->|HTTP/REST| AuthAPI
+    BlazorWeb -->|HTTP/REST| NotificationAPI
     BlazorWeb -.->|参照| ServiceDefaults
     BlazorWeb -.->|参照| Contracts
     
     EmployeeAPI -->|EF Core| EmployeeDB
+    EmployeeAPI -->|Pub/Sub| Redis
     EmployeeAPI -.->|参照| ServiceDefaults
     EmployeeAPI -.->|参照| Contracts
     
     AuthAPI -->|EF Core| AuthDB
     AuthAPI -.->|参照| ServiceDefaults
     AuthAPI -.->|参照| Contracts
+    
+    NotificationAPI -->|EF Core| NotificationDB
+    NotificationAPI -->|Pub/Sub| Redis
+    NotificationAPI -.->|参照| ServiceDefaults
+    NotificationAPI -.->|参照| Contracts
     
     ServiceDefaults -->|テレメトリ| OTel
     OTel -->|集約| Dashboard
@@ -111,6 +127,7 @@ graph TB
 | **ORM** | Entity Framework Core | 9.0.10 | .NET標準のORM、Migrations対応 |
 | **データベース** | SQLite | - | 開発環境（軽量、ファイルベース）|
 | | Azure SQL | - | 本番環境予定（スケーラビリティ、高可用性）|
+| **メッセージング** | Redis | - | Pub/Subメッセージング（イベント駆動通知）|
 | **認証** | ASP.NET Core Identity | 9.0.10 | 標準認証機能、ロール管理 |
 | **JWT認証** | Microsoft.AspNetCore.Authentication.JwtBearer | 9.0.10 | トークンベース認証（将来実装）|
 | **OpenAPI** | Microsoft.AspNetCore.OpenApi | 9.0.10 | API仕様生成、Swagger統合 |
@@ -180,16 +197,38 @@ DotnetEmployeeManagementSystem/
 │   │   │       ├── Endpoints/               # Minimal APIエンドポイント
 │   │   │       └── appsettings.json
 │   │   │
-│   │   └── AuthService/                     # 認証サービス
+│   │   ├── AuthService/                     # 認証サービス
+│   │   │   ├── Domain/                      # ドメイン層
+│   │   │   │   └── AuthService.Domain.csproj
+│   │   │   ├── Application/                 # アプリケーション層
+│   │   │   │   └── AuthService.Application.csproj
+│   │   │   ├── Infrastructure/              # インフラ層
+│   │   │   │   └── AuthService.Infrastructure.csproj
+│   │   │   └── API/                         # プレゼンテーション層
+│   │   │       ├── AuthService.API.csproj
+│   │   │       └── Program.cs
+│   │   │
+│   │   └── NotificationService/             # 通知サービス
 │   │       ├── Domain/                      # ドメイン層
-│   │       │   └── AuthService.Domain.csproj
+│   │       │   ├── NotificationService.Domain.csproj
+│   │       │   ├── Entities/                # 通知エンティティ
+│   │       │   └── Repositories/            # リポジトリインターフェース
 │   │       ├── Application/                 # アプリケーション層
-│   │       │   └── AuthService.Application.csproj
+│   │       │   ├── NotificationService.Application.csproj
+│   │       │   ├── UseCases/                # 通知ユースケース
+│   │       │   ├── Services/                # IEmailService
+│   │       │   └── Mappings/                # DTOマッピング
 │   │       ├── Infrastructure/              # インフラ層
-│   │       │   └── AuthService.Infrastructure.csproj
+│   │       │   ├── NotificationService.Infrastructure.csproj
+│   │       │   ├── Data/                    # DbContext
+│   │       │   ├── Repositories/            # リポジトリ実装
+│   │       │   ├── Services/                # ConsoleEmailService
+│   │       │   ├── Messaging/               # Redis Pub/Sub
+│   │       │   └── Workers/                 # バックグラウンド処理
 │   │       └── API/                         # プレゼンテーション層
-│   │           ├── AuthService.API.csproj
-│   │           └── Program.cs
+│   │           ├── NotificationService.API.csproj
+│   │           ├── Program.cs
+│   │           └── Endpoints/               # API エンドポイント
 │   │
 │   ├── WebApps/
 │   │   └── BlazorWeb/                       # Blazor Web UI
@@ -403,11 +442,26 @@ API層 ────→ Infrastructure層 ────→ Application層 ──�
 - **データベース**: authdb (SQLite)
 - **エンドポイント**: `/api/auth/register`, `/api/auth/login`
 
+**NotificationService（通知サービス）**
+- **責務**: イベント駆動型通知管理
+- **機能**:
+  - 従業員イベント（作成・更新・削除）の自動監視
+  - メール通知の自動送信
+  - 手動通知送信のサポート
+  - 通知履歴の管理と追跡
+  - バックグラウンドワーカーによる非同期処理
+- **データベース**: notificationdb (SQLite)
+- **エンドポイント**: `/api/notifications`
+- **メッセージング**: Redis Pub/Sub経由でEmployeeServiceからイベントを受信
+
+詳細は [通知サービス実装ガイド](notification-service.md) を参照してください。
+
 **BlazorWeb（UI フロントエンド）**
 - **責務**: ユーザーインターフェース
 - **機能**:
   - 従業員一覧表示
   - 従業員登録・編集ダイアログ
+  - 通知管理画面
   - ログイン画面
   - 認可によるUI制御
 - **通信**: HTTP REST API経由でバックエンドサービスと通信
@@ -420,12 +474,46 @@ API層 ────→ Infrastructure層 ────→ Application層 ──�
 |---------|------------|---------|
 | EmployeeService | employeedb | 従業員、部門 |
 | AuthService | authdb | ユーザー、ロール |
+| NotificationService | notificationdb | 通知、通知履歴 |
 
 **利点**:
 - サービスの独立性
 - スキーマ変更の影響範囲限定
 - 個別のスケーリング
 - データの論理的分離
+
+#### メッセージング基盤
+
+**Redis Pub/Sub**を使用したイベント駆動アーキテクチャ：
+
+**役割**:
+- サービス間の非同期通信
+- イベントの発行と購読
+- 疎結合なサービス統合
+
+**イベントチャネル**:
+- `employee.created`: 従業員作成イベント
+- `employee.updated`: 従業員更新イベント
+- `employee.deleted`: 従業員削除イベント
+
+**実装**:
+```csharp
+// EmployeeService - イベント発行
+await _eventPublisher.PublishAsync("employee.created", eventData);
+
+// NotificationService - イベント購読
+await subscriber.SubscribeAsync(
+    RedisChannel.Literal("employee.created"),
+    async (channel, message) => await HandleEventAsync(message));
+```
+
+**利点**:
+- リアルタイムイベント処理
+- サービス間の依存関係削減
+- スケーラブルな非同期処理
+- 複数のサブスクライバーをサポート
+
+詳細は [通知サービス実装ガイド](notification-service.md) を参照してください。
 
 ## 5. データフロー
 
@@ -1267,6 +1355,7 @@ await _hubContext.Clients.All.SendAsync("EmployeeUpdated", employee);
 - [開発ガイド](development-guide.md) - 開発手順とベストプラクティス
 - [Aspireダッシュボード](aspire-dashboard.md) - 監視とデバッグ
 - [データベース管理](database.md) - マイグレーションとクエリ最適化
+- [通知サービス実装ガイド](notification-service.md) - イベント駆動通知システム
 - [認可実装](authorization-implementation.md) - ロールベースアクセス制御
 - [Entra ID統合設計](entra-id-integration-design.md) - エンタープライズ認証統合
 
