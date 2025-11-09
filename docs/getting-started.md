@@ -59,9 +59,11 @@ dotnet run --project src/AppHost
 ```
 
 **起動時に実行されること:**
-- ✅ SQLiteデータベース（employeedb, authdb）の自動作成
+- ✅ SQLiteデータベース（employeedb, authdb, notificationdb）の自動作成
+- ✅ Redis サーバーの起動（Pub/Subメッセージング用）
 - ✅ EmployeeService API の起動
 - ✅ AuthService API の起動
+- ✅ NotificationService API の起動
 - ✅ BlazorWeb UI の起動
 - ✅ Aspireダッシュボードの起動とブラウザで自動オープン
 - ✅ OpenTelemetryによる可観測性の有効化
@@ -74,6 +76,8 @@ dotnet run --project src/AppHost
 - **BlazorWeb**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7000`）
 - **EmployeeService API**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7001`）
 - **AuthService API**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7002`）
+- **NotificationService API**: ダッシュボードの「Resources」タブから確認（通常 `https://localhost:7003`）
+- **Redis**: ダッシュボードの「Resources」タブで接続情報を確認
 
 **Aspireダッシュボードの機能:**
 - 📊 **リソースビュー**: すべてのサービスの状態とエンドポイントを確認
@@ -158,4 +162,5 @@ dotnet build
 
 - [アーキテクチャ概要](architecture.md)を読む
 - [開発ガイド](development-guide.md)を確認する
+- [通知サービス実装ガイド](notification-service.md)で通知機能について学ぶ
 - [Aspireダッシュボード](aspire-dashboard.md)の使い方を学ぶ

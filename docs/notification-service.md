@@ -595,3 +595,11 @@ private string GetNotificationTemplate(string type)
 通知サービスは、従業員管理システムに重要な通知機能を追加するマイクロサービスです。イベント駆動アーキテクチャとクリーンアーキテクチャの原則に従い、保守性とスケーラビリティを兼ね備えています。
 
 このドキュメントを参考に、システムのカスタマイズや拡張を行ってください。質問や問題がある場合は、GitHubのIssueで報告してください。
+
+## 関連ドキュメント
+
+- [アーキテクチャ概要](architecture.md) - システム全体のアーキテクチャと通知サービスの位置づけ
+- [詳細アーキテクチャ設計書](architecture-detailed.md) - 技術スタック詳細とメッセージング基盤
+- [開発ガイド](development-guide.md) - 開発手順とベストプラクティス
+- [Getting Started](getting-started.md) - セットアップと実行方法
+- [Aspireダッシュボード](aspire-dashboard.md) - 監視とデバッグ

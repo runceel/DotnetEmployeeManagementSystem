@@ -640,5 +640,6 @@ var entities = await _context.YourEntities.ToListAsync();
 
 - [Getting Started](getting-started.md)
 - [アーキテクチャ](architecture.md)
+- [通知サービス実装ガイド](notification-service.md)
 - [Aspireダッシュボード](aspire-dashboard.md)
 - [データベース管理](database.md)

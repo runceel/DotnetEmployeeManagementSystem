@@ -13,13 +13,21 @@ graph TB
     AppHost --> BlazorWeb["BlazorWeb<br/>(UI)"]
     AppHost --> EmployeeService["Employee Service<br/>(API)"]
     AppHost --> AuthService["Auth Service<br/>(API)"]
+    AppHost --> NotificationService["Notification Service<br/>(API)"]
+    AppHost --> Redis["Redis<br/>(Pub/Sub)"]
     
     BlazorWeb --> ServiceDefaults["Service Defaults<br/>(共通設定)"]
     EmployeeService --> ServiceDefaults
     AuthService --> ServiceDefaults
+    NotificationService --> ServiceDefaults
+    
+    EmployeeService --> Redis
+    NotificationService --> Redis
     
     style AppHost fill:#e1f5ff
     style ServiceDefaults fill:#e8f5e9
+    style Redis fill:#ffebee
+    style NotificationService fill:#e8f5e9
 ```
 
 ## コンポーネント構成
@@ -136,7 +144,26 @@ graph LR
 - OAuth 2.0 / OpenID Connect対応
 - 多要素認証（MFA）
 
-### 5. BlazorWeb (`src/WebApps/BlazorWeb`)
+### 5. NotificationService (`src/Services/NotificationService`)
+
+**役割**: イベント駆動型通知管理
+
+**主要機能**:
+- Redisを使用したイベント駆動アーキテクチャ
+- 従業員の作成、更新、削除イベントに対する自動通知
+- 手動通知送信のサポート
+- 通知履歴の管理と追跡
+- バックグラウンドワーカーによる非同期メール送信
+
+**技術スタック**:
+- Redis Pub/Sub: イベントメッセージング
+- SQLite: 通知履歴データベース
+- IHostedService: バックグラウンド処理
+- クリーンアーキテクチャ: Domain駆動設計
+
+詳細は [通知サービス実装ガイド](notification-service.md) を参照してください。
+
+### 6. BlazorWeb (`src/WebApps/BlazorWeb`)
 
 **役割**: Webフロントエンド
 
@@ -150,7 +177,7 @@ graph LR
 - ダッシュボード
 - レスポンシブデザイン
 
-### 6. Shared.Contracts (`src/Shared/Contracts`)
+### 7. Shared.Contracts (`src/Shared/Contracts`)
 
 **役割**: サービス間で共有されるDTO
 
@@ -315,6 +342,38 @@ sequenceDiagram
     UI-->>User: 画面更新
 ```
 
+### イベント駆動通知フロー
+
+従業員の作成・更新・削除時に、NotificationServiceが自動的に通知を送信します。
+
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as BlazorWeb
+    participant EmpAPI as EmployeeService API
+    participant Redis as Redis Pub/Sub
+    participant NotifConsumer as NotificationService<br/>EventConsumer
+    participant NotifWorker as NotificationService<br/>ProcessorWorker
+    participant Email as メール送信
+    
+    User->>UI: 従業員を作成
+    UI->>EmpAPI: POST /api/employees
+    EmpAPI->>EmpAPI: 従業員をDBに保存
+    EmpAPI->>Redis: EmployeeCreatedEvent発行
+    EmpAPI-->>UI: 成功レスポンス
+    
+    Redis->>NotifConsumer: イベント受信
+    NotifConsumer->>NotifConsumer: 通知エンティティ作成<br/>(Status: Pending)
+    
+    loop 10秒ごと
+        NotifWorker->>NotifWorker: Pending通知を取得
+        NotifWorker->>Email: メール送信
+        NotifWorker->>NotifWorker: Status を Sent に更新
+    end
+```
+
+詳細なイベントフローについては [通知サービス実装ガイド](notification-service.md) を参照してください。
+
 ## セキュリティ
 
 ### 現在の実装
@@ -378,3 +437,4 @@ Aspire ServiceDefaultsにより、すべてのサービスで以下が自動的�
 - [開発ガイド](development-guide.md)
 - [Aspireダッシュボード](aspire-dashboard.md)
 - [データベース管理](database.md)
+- [通知サービス実装ガイド](notification-service.md)
