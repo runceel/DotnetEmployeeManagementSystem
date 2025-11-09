@@ -24,6 +24,13 @@ builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>("authservice-api",
     client.BaseAddress = new Uri("http://authservice-api");
 });
 
+// Add HttpClient for NotificationService with Aspire service discovery
+builder.Services.AddHttpClient<INotificationApiClient, NotificationApiClient>("notificationservice-api", client =>
+{
+    // Service discovery will resolve this to the actual endpoint
+    client.BaseAddress = new Uri("http://notificationservice-api");
+});
+
 // Add authentication state management service
 builder.Services.AddScoped<AuthStateService>();
 

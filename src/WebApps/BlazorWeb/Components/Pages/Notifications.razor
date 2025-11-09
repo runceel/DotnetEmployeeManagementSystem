@@ -1,0 +1,241 @@
+@page "/notifications"
+@rendermode InteractiveServer
+@using BlazorWeb.Services
+@using Shared.Contracts.NotificationService
+@inject INotificationApiClient NotificationApiClient
+@inject IEmployeeApiClient EmployeeApiClient
+@inject ISnackbar Snackbar
+
+<PageTitle>通知管理</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">通知管理</MudText>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <MudTabPanel Text="通知履歴">
+            <MudStack>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadNotifications" StartIcon="@Icons.Material.Filled.Refresh">
+                    更新
+                </MudButton>
+
+                @if (isLoadingNotifications)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                }
+                else if (notifications.Any())
+                {
+                    <MudTable Items="@notifications" Hover="true" Striped="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>作成日時</MudTh>
+                            <MudTh>受信者</MudTh>
+                            <MudTh>通知タイプ</MudTh>
+                            <MudTh>件名</MudTh>
+                            <MudTh>状態</MudTh>
+                            <MudTh>送信日時</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="作成日時">@context.CreatedAt.ToString("yyyy/MM/dd HH:mm:ss")</MudTd>
+                            <MudTd DataLabel="受信者">
+                                <MudText Typo="Typo.body2">@context.RecipientName</MudText>
+                                <MudText Typo="Typo.caption">@context.RecipientEmail</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="通知タイプ">
+                                <MudChip T="string" Size="Size.Small" Color="GetNotificationTypeColor(context.NotificationType)">
+                                    @GetNotificationTypeLabel(context.NotificationType)
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="件名">@context.Subject</MudTd>
+                            <MudTd DataLabel="状態">
+                                <MudChip T="string" Size="Size.Small" Color="GetStatusColor(context.Status)">
+                                    @GetStatusLabel(context.Status)
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="送信日時">
+                                @(context.SentAt?.ToString("yyyy/MM/dd HH:mm:ss") ?? "-")
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">通知履歴がありません</MudAlert>
+                }
+            </MudStack>
+        </MudTabPanel>
+
+        <MudTabPanel Text="テスト通知送信">
+            <MudStack Spacing="4">
+                <MudText Typo="Typo.h6">従業員に手動でテスト通知を送信</MudText>
+                
+                @if (isLoadingEmployees)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (employees.Any())
+                {
+                    <MudSelect T="Guid?" @bind-Value="selectedEmployeeId" Label="従業員を選択" Variant="Variant.Outlined">
+                        @foreach (var employee in employees)
+                        {
+                            <MudSelectItem T="Guid?" Value="@employee.Id">
+                                @employee.LastName @employee.FirstName (@employee.Email)
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="testSubject" Label="件名" Variant="Variant.Outlined" Required="true" />
+                    
+                    <MudTextField @bind-Value="testMessage" Label="メッセージ" Variant="Variant.Outlined" 
+                                  Lines="5" Required="true" />
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                               OnClick="SendTestNotification"
+                               Disabled="@(!selectedEmployeeId.HasValue || string.IsNullOrWhiteSpace(testSubject) || string.IsNullOrWhiteSpace(testMessage) || isSendingNotification)"
+                               StartIcon="@Icons.Material.Filled.Send">
+                        @(isSendingNotification ? "送信中..." : "通知を送信")
+                    </MudButton>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning">従業員が登録されていません</MudAlert>
+                }
+            </MudStack>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private List<NotificationDto> notifications = new();
+    private List<Shared.Contracts.EmployeeService.EmployeeDto> employees = new();
+    private bool isLoadingNotifications = true;
+    private bool isLoadingEmployees = true;
+    private bool isSendingNotification = false;
+
+    private Guid? selectedEmployeeId;
+    private string testSubject = "テスト通知";
+    private string testMessage = "これはテスト通知のメッセージです。\n\nシステムから自動送信されました。";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadNotifications(), LoadEmployees());
+    }
+
+    private async Task LoadNotifications()
+    {
+        isLoadingNotifications = true;
+        try
+        {
+            var result = await NotificationApiClient.GetRecentAsync(100);
+            notifications = result.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"通知の取得に失敗しました: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingNotifications = false;
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        isLoadingEmployees = true;
+        try
+        {
+            var result = await EmployeeApiClient.GetAllEmployeesAsync();
+            employees = result.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"従業員一覧の取得に失敗しました: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingEmployees = false;
+        }
+    }
+
+    private async Task SendTestNotification()
+    {
+        if (!selectedEmployeeId.HasValue) return;
+
+        isSendingNotification = true;
+        try
+        {
+            var employee = employees.FirstOrDefault(e => e.Id == selectedEmployeeId.Value);
+            if (employee == null) return;
+
+            var request = new CreateNotificationRequest
+            {
+                RecipientEmail = employee.Email,
+                RecipientName = $"{employee.LastName} {employee.FirstName}",
+                Subject = testSubject,
+                Message = testMessage
+            };
+
+            await NotificationApiClient.CreateAsync(request);
+            Snackbar.Add("テスト通知を送信しました", Severity.Success);
+
+            // 通知履歴を再読み込み
+            await LoadNotifications();
+
+            // フォームをリセット
+            testSubject = "テスト通知";
+            testMessage = "これはテスト通知のメッセージです。\n\nシステムから自動送信されました。";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"通知の送信に失敗しました: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSendingNotification = false;
+        }
+    }
+
+    private Color GetNotificationTypeColor(string notificationType)
+    {
+        return notificationType switch
+        {
+            "EmployeeCreated" => Color.Success,
+            "EmployeeUpdated" => Color.Info,
+            "EmployeeDeleted" => Color.Warning,
+            "Manual" => Color.Primary,
+            _ => Color.Default
+        };
+    }
+
+    private string GetNotificationTypeLabel(string notificationType)
+    {
+        return notificationType switch
+        {
+            "EmployeeCreated" => "従業員作成",
+            "EmployeeUpdated" => "従業員更新",
+            "EmployeeDeleted" => "従業員削除",
+            "Manual" => "手動送信",
+            _ => notificationType
+        };
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Pending" => Color.Warning,
+            "Sent" => Color.Success,
+            "Failed" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusLabel(string status)
+    {
+        return status switch
+        {
+            "Pending" => "送信待ち",
+            "Sent" => "送信済み",
+            "Failed" => "失敗",
+            _ => status
+        };
+    }
+}
