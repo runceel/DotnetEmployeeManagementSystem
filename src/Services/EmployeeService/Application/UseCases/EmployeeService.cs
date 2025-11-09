@@ -1,15 +1,18 @@
 using EmployeeService.Application.Mappings;
+using EmployeeService.Application.Services;
 using EmployeeService.Domain.Repositories;
 using Shared.Contracts.EmployeeService;
+using Shared.Contracts.Events;
 
 namespace EmployeeService.Application.UseCases;
 
 /// <summary>
 /// 従業員サービス
 /// </summary>
-public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
+public class EmployeeService(IEmployeeRepository repository, IEventPublisher? eventPublisher = null) : IEmployeeService
 {
     private readonly IEmployeeRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+    private readonly IEventPublisher? _eventPublisher = eventPublisher;
 
     public async Task<EmployeeDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -35,6 +38,23 @@ public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
 
         var employee = request.ToEntity();
         var created = await _repository.AddAsync(employee, cancellationToken);
+
+        // イベントを発行
+        if (_eventPublisher != null)
+        {
+            var eventData = new EmployeeCreatedEvent
+            {
+                EmployeeId = created.Id,
+                FirstName = created.FirstName,
+                LastName = created.LastName,
+                Email = created.Email,
+                Department = created.Department,
+                Position = created.Position,
+                CreatedAt = created.CreatedAt
+            };
+            await _eventPublisher.PublishAsync("employee.created", eventData, cancellationToken);
+        }
+
         return created.ToDto();
     }
 
@@ -64,6 +84,23 @@ public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
         );
 
         await _repository.UpdateAsync(employee, cancellationToken);
+
+        // イベントを発行
+        if (_eventPublisher != null)
+        {
+            var eventData = new EmployeeUpdatedEvent
+            {
+                EmployeeId = employee.Id,
+                FirstName = employee.FirstName,
+                LastName = employee.LastName,
+                Email = employee.Email,
+                Department = employee.Department,
+                Position = employee.Position,
+                UpdatedAt = employee.UpdatedAt
+            };
+            await _eventPublisher.PublishAsync("employee.updated", eventData, cancellationToken);
+        }
+
         return employee.ToDto();
     }
 
@@ -76,6 +113,21 @@ public class EmployeeService(IEmployeeRepository repository) : IEmployeeService
         }
 
         await _repository.DeleteAsync(id, cancellationToken);
+
+        // イベントを発行
+        if (_eventPublisher != null)
+        {
+            var eventData = new EmployeeDeletedEvent
+            {
+                EmployeeId = employee.Id,
+                FirstName = employee.FirstName,
+                LastName = employee.LastName,
+                Email = employee.Email,
+                DeletedAt = DateTime.UtcNow
+            };
+            await _eventPublisher.PublishAsync("employee.deleted", eventData, cancellationToken);
+        }
+
         return true;
     }
 

@@ -1,5 +1,7 @@
+using EmployeeService.Application.Services;
 using EmployeeService.Domain.Repositories;
 using EmployeeService.Infrastructure.Data;
+using EmployeeService.Infrastructure.Messaging;
 using EmployeeService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +25,7 @@ public static class DependencyInjection
 
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IEventPublisher, RedisEventPublisher>();
 
         return services;
     }
