@@ -18,6 +18,11 @@ public class EmployeeDbContext : DbContext
     /// </summary>
     public DbSet<Employee> Employees => Set<Employee>();
 
+    /// <summary>
+    /// 部署
+    /// </summary>
+    public DbSet<Department> Departments => Set<Department>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -56,6 +61,28 @@ public class EmployeeDbContext : DbContext
                 .IsRequired();
 
             entity.Property(e => e.UpdatedAt)
+                .IsRequired();
+        });
+
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+
+            entity.Property(d => d.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.HasIndex(d => d.Name)
+                .IsUnique();
+
+            entity.Property(d => d.Description)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(d => d.CreatedAt)
+                .IsRequired();
+
+            entity.Property(d => d.UpdatedAt)
                 .IsRequired();
         });
     }

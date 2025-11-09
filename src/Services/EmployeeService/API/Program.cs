@@ -3,6 +3,7 @@ using EmployeeService.Infrastructure;
 using EmployeeService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.EmployeeService;
+using Shared.Contracts.DepartmentService;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +52,7 @@ if (!builder.Environment.IsEnvironment("Test"))
 
 // Application層のサービスを追加
 builder.Services.AddScoped<IEmployeeService, EmployeeService.Application.UseCases.EmployeeService>();
+builder.Services.AddScoped<IDepartmentService, EmployeeService.Application.UseCases.DepartmentService>();
 
 var app = builder.Build();
 
@@ -171,6 +173,80 @@ employees.MapGet("/dashboard/recent-activities", async (IEmployeeService employe
 })
 .WithName("GetRecentActivities")
 .Produces<IEnumerable<RecentActivityDto>>();
+
+// Department API endpoints
+var departments = app.MapGroup("/api/departments")
+    .WithTags("Departments")
+    .WithOpenApi();
+
+// 全部署を取得
+departments.MapGet("/", async (IDepartmentService departmentService) =>
+{
+    var result = await departmentService.GetAllAsync();
+    return Results.Ok(result);
+})
+.WithName("GetAllDepartments")
+.Produces<IEnumerable<DepartmentDto>>();
+
+// IDで部署を取得
+departments.MapGet("/{id:guid}", async (Guid id, IDepartmentService departmentService) =>
+{
+    var result = await departmentService.GetByIdAsync(id);
+    return result is not null ? Results.Ok(result) : Results.NotFound();
+})
+.WithName("GetDepartmentById")
+.Produces<DepartmentDto>()
+.Produces(StatusCodes.Status404NotFound);
+
+// 部署を作成
+departments.MapPost("/", async ([FromBody] CreateDepartmentRequest request, IDepartmentService departmentService) =>
+{
+    try
+    {
+        var result = await departmentService.CreateAsync(request);
+        return Results.Created($"/api/departments/{result.Id}", result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("CreateDepartment")
+.Produces<DepartmentDto>(StatusCodes.Status201Created)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status403Forbidden)
+.RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+// 部署を更新
+departments.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateDepartmentRequest request, IDepartmentService departmentService) =>
+{
+    try
+    {
+        var result = await departmentService.UpdateAsync(id, request);
+        return result is not null ? Results.Ok(result) : Results.NotFound();
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("UpdateDepartment")
+.Produces<DepartmentDto>()
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status403Forbidden)
+.RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+// 部署を削除
+departments.MapDelete("/{id:guid}", async (Guid id, IDepartmentService departmentService) =>
+{
+    var result = await departmentService.DeleteAsync(id);
+    return result ? Results.NoContent() : Results.NotFound();
+})
+.WithName("DeleteDepartment")
+.Produces(StatusCodes.Status204NoContent)
+.Produces(StatusCodes.Status404NotFound)
+.RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 app.Run();
 
