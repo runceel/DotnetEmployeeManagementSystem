@@ -6,26 +6,20 @@
 
 このシステムは**.NET Aspire**を使用したマイクロサービスアーキテクチャで構成されています。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Aspire AppHost                            │
-│              (オーケストレーション層)                          │
-└─────────────────────────────────────────────────────────────┘
-           │              │                │
-           ▼              ▼                ▼
-    ┌──────────┐   ┌──────────┐    ┌──────────┐
-    │ BlazorWeb│   │ Employee │    │   Auth   │
-    │          │   │ Service  │    │ Service  │
-    │  (UI)    │   │  (API)   │    │  (API)   │
-    └──────────┘   └──────────┘    └──────────┘
-           │              │                │
-           └──────────────┴────────────────┘
-                         │
-                  ┌──────▼──────┐
-                  │ Service     │
-                  │ Defaults    │
-                  │ (共通設定)  │
-                  └─────────────┘
+```mermaid
+graph TB
+    AppHost["Aspire AppHost<br/>(オーケストレーション層)"]
+    
+    AppHost --> BlazorWeb["BlazorWeb<br/>(UI)"]
+    AppHost --> EmployeeService["Employee Service<br/>(API)"]
+    AppHost --> AuthService["Auth Service<br/>(API)"]
+    
+    BlazorWeb --> ServiceDefaults["Service Defaults<br/>(共通設定)"]
+    EmployeeService --> ServiceDefaults
+    AuthService --> ServiceDefaults
+    
+    style AppHost fill:#e1f5ff
+    style ServiceDefaults fill:#e8f5e9
 ```
 
 ## コンポーネント構成
@@ -114,10 +108,17 @@ app.MapDefaultEndpoints(); // /health, /alive エンドポイントを公開
   - OpenAPI/Swagger設定
 
 **依存関係の方向**:
-```
-API ─→ Infrastructure ─→ Application ─→ Domain
-                              ↓
-                          Contracts
+```mermaid
+graph LR
+    API["API層"] --> Infrastructure["Infrastructure層"]
+    Infrastructure --> Application["Application層"]
+    Application --> Domain["Domain層"]
+    Application --> Contracts["Contracts"]
+    
+    style Domain fill:#fff3e0
+    style Application fill:#e8f5e9
+    style Infrastructure fill:#e3f2fd
+    style API fill:#f3e5f5
 ```
 
 ### 4. AuthService (`src/Services/AuthService/API`)
@@ -290,20 +291,28 @@ public record EmployeeDto
 
 ### 典型的なリクエストフロー
 
-```
-1. ユーザー操作
-   ↓
-2. BlazorWeb (UI)
-   ↓ HTTP Request
-3. EmployeeService API
-   ↓ コントローラー
-4. Application層（ハンドラー）
-   ↓ ビジネスロジック
-5. Domain層（エンティティ）
-   ↓ 永続化
-6. Infrastructure層（リポジトリ）
-   ↓ EF Core
-7. SQLite データベース
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as BlazorWeb (UI)
+    participant API as EmployeeService API
+    participant App as Application層
+    participant Domain as Domain層
+    participant Infra as Infrastructure層
+    participant DB as SQLite データベース
+    
+    User->>UI: 1. ユーザー操作
+    UI->>API: 2. HTTP Request
+    API->>App: 3. コントローラー
+    App->>Domain: 4. ビジネスロジック
+    Domain->>Infra: 5. 永続化
+    Infra->>DB: 6. EF Core
+    DB-->>Infra: データ
+    Infra-->>Domain: エンティティ
+    Domain-->>App: 結果
+    App-->>API: レスポンス
+    API-->>UI: HTTP Response
+    UI-->>User: 画面更新
 ```
 
 ## セキュリティ

@@ -26,25 +26,30 @@
 
 ### システム構成図
 
-```
-┌─────────────────┐      ┌──────────────────┐      ┌─────────────────────┐
-│  BlazorWeb      │─────▶│  EmployeeService │─────▶│  NotificationService│
-│  (UI)           │      │  (API)           │      │  (API)              │
-└─────────────────┘      └──────────────────┘      └─────────────────────┘
-         │                        │                          │
-         │                        │                          │
-         │                        ▼                          ▼
-         │                   ┌────────┐              ┌──────────────┐
-         │                   │  Redis │◀─────────────│  Workers     │
-         │                   │ Pub/Sub│              │  - Consumer  │
-         │                   └────────┘              │  - Processor │
-         │                                           └──────────────┘
-         │                                                   │
-         ▼                                                   ▼
-┌──────────────────┐                              ┌──────────────────┐
-│  NotificationAPI │                              │  SQLite DB       │
-│  (Direct Call)   │                              │  (notifications) │
-└──────────────────┘                              └──────────────────┘
+```mermaid
+graph TB
+    BlazorWeb["BlazorWeb<br/>(UI)"]
+    EmployeeService["EmployeeService<br/>(API)"]
+    NotificationService["NotificationService<br/>(API)"]
+    Redis["Redis<br/>Pub/Sub"]
+    Workers["Workers<br/>- Consumer<br/>- Processor"]
+    NotificationAPI["NotificationAPI<br/>(Direct Call)"]
+    DB["SQLite DB<br/>(notifications)"]
+    
+    BlazorWeb --> EmployeeService
+    EmployeeService --> NotificationService
+    EmployeeService --> Redis
+    Workers --> Redis
+    Workers --> DB
+    BlazorWeb --> NotificationAPI
+    NotificationService --> DB
+    
+    style BlazorWeb fill:#f3e5f5
+    style EmployeeService fill:#fff3e0
+    style NotificationService fill:#e8f5e9
+    style Redis fill:#ffebee
+    style Workers fill:#e3f2fd
+    style DB fill:#fce4ec
 ```
 
 ### イベントフロー
@@ -78,49 +83,27 @@
 
 ### データフロー
 
-```
-┌─────────────────────┐
-│  Employee CRUD      │
-│  - Create           │
-│  - Update           │
-│  - Delete           │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Event Publishing   │
-│  - EmployeeCreated  │
-│  - EmployeeUpdated  │
-│  - EmployeeDeleted  │
-└──────────┬──────────┘
-           │
-           ▼
-    ┌──────────┐
-    │  Redis   │
-    │  Pub/Sub │
-    └─────┬────┘
-          │
-          ▼
-┌─────────────────────┐
-│  Event Consumer     │
-│  - Subscribe        │
-│  - Deserialize      │
-│  - Create Notif.    │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Notification DB    │
-│  - Pending Queue    │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Processor Worker   │
-│  - Fetch Pending    │
-│  - Send Email       │
-│  - Update Status    │
-└─────────────────────┘
+```mermaid
+graph TD
+    CRUD["Employee CRUD<br/>- Create<br/>- Update<br/>- Delete"]
+    EventPub["Event Publishing<br/>- EmployeeCreated<br/>- EmployeeUpdated<br/>- EmployeeDeleted"]
+    Redis["Redis<br/>Pub/Sub"]
+    Consumer["Event Consumer<br/>- Subscribe<br/>- Deserialize<br/>- Create Notif."]
+    NotificationDB["Notification DB<br/>- Pending Queue"]
+    Processor["Processor Worker<br/>- Fetch Pending<br/>- Send Email<br/>- Update Status"]
+    
+    CRUD --> EventPub
+    EventPub --> Redis
+    Redis --> Consumer
+    Consumer --> NotificationDB
+    NotificationDB --> Processor
+    
+    style CRUD fill:#fff3e0
+    style EventPub fill:#e8f5e9
+    style Redis fill:#ffebee
+    style Consumer fill:#e3f2fd
+    style NotificationDB fill:#fce4ec
+    style Processor fill:#f3e5f5
 ```
 
 ## セットアップ
