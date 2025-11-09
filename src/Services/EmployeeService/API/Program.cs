@@ -48,6 +48,9 @@ if (!builder.Environment.IsEnvironment("Test"))
     
     // Infrastructure層のサービスを追加
     builder.Services.AddInfrastructure(connectionString);
+
+    // Redis接続の追加
+    builder.AddRedisClient("redis");
 }
 
 // Application層のサービスを追加

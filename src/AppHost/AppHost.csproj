@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="9.5.2" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="9.5.2" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.9.0" />
   </ItemGroup>
 
@@ -19,6 +20,7 @@
     <ProjectReference Include="..\Services\EmployeeService\API\EmployeeService.API.csproj" />
     <ProjectReference Include="..\Services\AuthService\API\AuthService.API.csproj" />
     <ProjectReference Include="..\WebApps\BlazorWeb\BlazorWeb.csproj" />
+    <ProjectReference Include="..\Services\NotificationService\API\NotificationService.API.csproj" />
   </ItemGroup>
 
 </Project>
