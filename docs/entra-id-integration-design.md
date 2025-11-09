@@ -29,35 +29,24 @@ private static string GenerateDummyToken(ApplicationUser user)
 
 ### アーキテクチャ概要
 
-```
-┌─────────────────┐
-│  BlazorWeb      │
-│  (Frontend)     │
-└────────┬────────┘
-         │
-         │ 1. OAuth 2.0 / OIDC
-         │    Authorization Code Flow
-         ▼
-┌─────────────────┐
-│  Entra ID       │
-│  (IdP)          │
-└────────┬────────┘
-         │
-         │ 2. JWT Token
-         │    (ID Token + Access Token)
-         ▼
-┌─────────────────┐         ┌─────────────────┐
-│  AuthService    │◄────────│  EmployeeService│
-│  (API)          │         │  (API)          │
-└─────────────────┘         └─────────────────┘
-         │
-         │ 3. Token Validation
-         │    & User Info
-         ▼
-┌─────────────────┐
-│  Azure SQL /    │
-│  PostgreSQL     │
-└─────────────────┘
+```mermaid
+graph TD
+    BlazorWeb["BlazorWeb<br/>(Frontend)"]
+    EntraID["Entra ID<br/>(IdP)"]
+    AuthService["AuthService<br/>(API)"]
+    EmployeeService["EmployeeService<br/>(API)"]
+    Database["Azure SQL /<br/>PostgreSQL"]
+    
+    BlazorWeb -->|"1. OAuth 2.0 / OIDC<br/>Authorization Code Flow"| EntraID
+    EntraID -->|"2. JWT Token<br/>(ID Token + Access Token)"| AuthService
+    EmployeeService --> AuthService
+    AuthService -->|"3. Token Validation<br/>& User Info"| Database
+    
+    style EntraID fill:#e1f5ff
+    style BlazorWeb fill:#f3e5f5
+    style AuthService fill:#e8f5e9
+    style EmployeeService fill:#fff3e0
+    style Database fill:#fce4ec
 ```
 
 ### 認証フロー
