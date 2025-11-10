@@ -1,6 +1,8 @@
 using AttendanceService.Application.Services;
 using AttendanceService.Domain.Enums;
+using AttendanceService.Domain.Repositories;
 using AttendanceService.Infrastructure;
+using AttendanceService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.AttendanceService;
 
@@ -29,6 +31,12 @@ if (!builder.Environment.IsEnvironment("Test"))
 
 var app = builder.Build();
 
+// データベース初期化 (Test環境では実行しない)
+if (!app.Environment.IsEnvironment("Test"))
+{
+    await DbInitializer.InitializeAsync(app.Services);
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -43,6 +51,87 @@ app.UseHttpsRedirection();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .WithName("HealthCheck")
     .WithTags("Health");
+
+// Development-only endpoint to seed attendance data for specific employees
+if (app.Environment.IsDevelopment())
+{
+    app.MapPost("/api/dev/seed-attendances", async (
+        [FromBody] List<Guid> employeeIds,
+        [FromServices] IAttendanceRepository attendanceRepository,
+        CancellationToken cancellationToken) =>
+    {
+        try
+        {
+            var attendances = new List<AttendanceService.Domain.Entities.Attendance>();
+            var random = new Random(42);
+            var today = DateTime.UtcNow.Date;
+            var startDate = today.AddMonths(-3);
+
+            foreach (var employeeId in employeeIds)
+            {
+                var currentDate = startDate;
+                while (currentDate <= today)
+                {
+                    if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
+                    {
+                        if (random.Next(100) < 90)
+                        {
+                            var attendanceType = random.Next(100) switch
+                            {
+                                < 80 => AttendanceType.Normal,
+                                < 90 => AttendanceType.Remote,
+                                < 95 => AttendanceType.BusinessTrip,
+                                _ => AttendanceType.HalfDay
+                            };
+
+                            var attendance = new AttendanceService.Domain.Entities.Attendance(employeeId, currentDate, attendanceType);
+
+                            var checkInHour = 8;
+                            var checkInMinute = random.Next(0, 61);
+                            if (checkInMinute >= 30)
+                            {
+                                checkInHour = 9;
+                                checkInMinute -= 30;
+                            }
+                            var checkInTime = new DateTime(currentDate.Year, currentDate.Month, currentDate.Day,
+                                checkInHour, checkInMinute, 0, DateTimeKind.Utc);
+
+                            attendance.CheckIn(checkInTime);
+
+                            var workHours = 7 + random.Next(0, 4) + (random.NextDouble() * 0.5);
+                            var checkOutTime = checkInTime.AddHours(workHours);
+                            attendance.CheckOut(checkOutTime);
+
+                            if (random.Next(100) < 10)
+                            {
+                                var notes = new[] { "打ち合わせ多数", "顧客訪問", "社内研修", "定期健康診断" };
+                                var selectedNote = notes[random.Next(notes.Length)];
+                                attendance.Update(attendanceType, selectedNote);
+                            }
+
+                            attendances.Add(attendance);
+                        }
+                    }
+                    currentDate = currentDate.AddDays(1);
+                }
+            }
+
+            foreach (var attendance in attendances)
+            {
+                await attendanceRepository.AddAsync(attendance, cancellationToken);
+            }
+
+            return Results.Ok(new { message = $"Seeded {attendances.Count} attendance records for {employeeIds.Count} employees" });
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+    .WithName("SeedAttendances")
+    .WithTags("Development")
+    .ExcludeFromDescription();
+}
 
 // Attendance API endpoints
 var attendances = app.MapGroup("/api/attendances")
@@ -157,6 +246,135 @@ attendances.MapPost("/checkout", async (
 })
 .WithName("CheckOut")
 .Produces<AttendanceDto>()
+.Produces(StatusCodes.Status400BadRequest);
+
+// 従業員の勤怠履歴を取得
+attendances.MapGet("/employee/{employeeId:guid}", async (
+    Guid employeeId,
+    [FromServices] IAttendanceRepository attendanceRepository,
+    [FromQuery] DateTime? startDate,
+    [FromQuery] DateTime? endDate,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        IEnumerable<AttendanceService.Domain.Entities.Attendance> attendanceRecords;
+
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            attendanceRecords = await attendanceRepository.GetByEmployeeIdAndDateRangeAsync(
+                employeeId,
+                startDate.Value,
+                endDate.Value,
+                cancellationToken);
+        }
+        else
+        {
+            attendanceRecords = await attendanceRepository.GetByEmployeeIdAsync(
+                employeeId,
+                cancellationToken);
+        }
+
+        var dtos = attendanceRecords.Select(a => new AttendanceDto
+        {
+            Id = a.Id,
+            EmployeeId = a.EmployeeId,
+            WorkDate = a.WorkDate,
+            CheckInTime = a.CheckInTime,
+            CheckOutTime = a.CheckOutTime,
+            Type = a.Type.ToString(),
+            Notes = a.Notes,
+            WorkHours = a.CalculateWorkHours(),
+            CreatedAt = a.CreatedAt,
+            UpdatedAt = a.UpdatedAt
+        });
+
+        return Results.Ok(dtos);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("GetAttendancesByEmployee")
+.Produces<IEnumerable<AttendanceDto>>()
+.Produces(StatusCodes.Status400BadRequest);
+
+// 従業員の月次勤怠集計を取得
+attendances.MapGet("/employee/{employeeId:guid}/summary/{year:int}/{month:int}", async (
+    Guid employeeId,
+    int year,
+    int month,
+    [FromServices] IAttendanceRepository attendanceRepository,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        if (month < 1 || month > 12)
+        {
+            return Results.BadRequest(new { error = "月は1から12の範囲で指定してください。" });
+        }
+
+        var startDate = new DateTime(year, month, 1);
+        var endDate = startDate.AddMonths(1).AddDays(-1);
+
+        var attendanceRecords = await attendanceRepository.GetByEmployeeIdAndDateRangeAsync(
+            employeeId,
+            startDate,
+            endDate,
+            cancellationToken);
+
+        var attendanceList = attendanceRecords.ToList();
+
+        // 集計計算
+        var workDays = attendanceList.Count(a => a.CheckInTime.HasValue && a.CheckOutTime.HasValue);
+        var totalHours = attendanceList.Sum(a => a.CalculateWorkHours() ?? 0);
+        var averageHours = workDays > 0 ? totalHours / workDays : 0;
+
+        // 遅刻回数（例: 9:00より後の出勤）
+        var lateDays = attendanceList.Count(a =>
+            a.CheckInTime.HasValue &&
+            a.CheckInTime.Value.TimeOfDay > new TimeSpan(9, 0, 0));
+
+        // 欠勤日数と有給休暇日数は別途LeaveRequestから取得する必要があるため、ここでは0とする
+        var absentDays = 0;
+        var paidLeaveDays = 0;
+
+        var summary = new MonthlyAttendanceSummaryDto
+        {
+            EmployeeId = employeeId,
+            Year = year,
+            Month = month,
+            TotalWorkDays = workDays,
+            TotalWorkHours = totalHours,
+            AverageWorkHours = averageHours,
+            LateDays = lateDays,
+            AbsentDays = absentDays,
+            PaidLeaveDays = paidLeaveDays,
+            Attendances = attendanceList.Select(a => new AttendanceDto
+            {
+                Id = a.Id,
+                EmployeeId = a.EmployeeId,
+                WorkDate = a.WorkDate,
+                CheckInTime = a.CheckInTime,
+                CheckOutTime = a.CheckOutTime,
+                Type = a.Type.ToString(),
+                Notes = a.Notes,
+                WorkHours = a.CalculateWorkHours(),
+                CreatedAt = a.CreatedAt,
+                UpdatedAt = a.UpdatedAt
+            })
+        };
+
+        return Results.Ok(summary);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("GetMonthlyAttendanceSummary")
+.Produces<MonthlyAttendanceSummaryDto>()
 .Produces(StatusCodes.Status400BadRequest);
 
 // Leave Request API endpoints

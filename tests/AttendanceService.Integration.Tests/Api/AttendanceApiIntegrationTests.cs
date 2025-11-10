@@ -290,4 +290,180 @@ public class AttendanceApiIntegrationTests : IClassFixture<WebApplicationFactory
         // Our domain logic requires checkout to be for the same work date
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetAttendancesByEmployee_WhenNoData_ShouldReturnEmptyList()
+    {
+        // Arrange
+        var client = CreateClient();
+        var employeeId = Guid.NewGuid();
+
+        // Act
+        var response = await client.GetAsync($"/api/attendances/employee/{employeeId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var attendances = await response.Content.ReadFromJsonAsync<IEnumerable<AttendanceDto>>();
+        Assert.NotNull(attendances);
+        Assert.Empty(attendances);
+    }
+
+    [Fact]
+    public async Task GetAttendancesByEmployee_WhenHasData_ShouldReturnAttendances()
+    {
+        // Arrange
+        var client = CreateClient();
+        var employeeId = Guid.NewGuid();
+        var today = DateTime.UtcNow.Date;
+
+        // Create attendance records
+        var checkInRequest1 = new CheckInRequest
+        {
+            EmployeeId = employeeId,
+            CheckInTime = today.AddDays(-2).AddHours(9)
+        };
+        await client.PostAsJsonAsync("/api/attendances/checkin", checkInRequest1);
+
+        var checkInRequest2 = new CheckInRequest
+        {
+            EmployeeId = employeeId,
+            CheckInTime = today.AddDays(-1).AddHours(9)
+        };
+        await client.PostAsJsonAsync("/api/attendances/checkin", checkInRequest2);
+
+        // Act
+        var response = await client.GetAsync($"/api/attendances/employee/{employeeId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var attendances = await response.Content.ReadFromJsonAsync<IEnumerable<AttendanceDto>>();
+        Assert.NotNull(attendances);
+        Assert.Equal(2, attendances.Count());
+    }
+
+    [Fact]
+    public async Task GetAttendancesByEmployee_WithDateRange_ShouldFilterByDate()
+    {
+        // Arrange
+        var client = CreateClient();
+        var employeeId = Guid.NewGuid();
+        var today = DateTime.UtcNow.Date;
+
+        // Create attendance records for 3 different days
+        for (int i = 0; i < 3; i++)
+        {
+            var checkInRequest = new CheckInRequest
+            {
+                EmployeeId = employeeId,
+                CheckInTime = today.AddDays(-i).AddHours(9)
+            };
+            await client.PostAsJsonAsync("/api/attendances/checkin", checkInRequest);
+        }
+
+        // Act - Request only last 2 days
+        var startDate = today.AddDays(-1).ToString("yyyy-MM-dd");
+        var endDate = today.ToString("yyyy-MM-dd");
+        var response = await client.GetAsync($"/api/attendances/employee/{employeeId}?startDate={startDate}&endDate={endDate}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var attendances = await response.Content.ReadFromJsonAsync<IEnumerable<AttendanceDto>>();
+        Assert.NotNull(attendances);
+        Assert.Equal(2, attendances.Count());
+    }
+
+    [Fact]
+    public async Task GetMonthlyAttendanceSummary_WhenNoData_ShouldReturnEmptySummary()
+    {
+        // Arrange
+        var client = CreateClient();
+        var employeeId = Guid.NewGuid();
+        var year = DateTime.UtcNow.Year;
+        var month = DateTime.UtcNow.Month;
+
+        // Act
+        var response = await client.GetAsync($"/api/attendances/employee/{employeeId}/summary/{year}/{month}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var summary = await response.Content.ReadFromJsonAsync<MonthlyAttendanceSummaryDto>();
+        Assert.NotNull(summary);
+        Assert.Equal(employeeId, summary.EmployeeId);
+        Assert.Equal(year, summary.Year);
+        Assert.Equal(month, summary.Month);
+        Assert.Equal(0, summary.TotalWorkDays);
+        Assert.Equal(0, summary.TotalWorkHours);
+    }
+
+    [Fact]
+    public async Task GetMonthlyAttendanceSummary_WhenHasData_ShouldCalculateCorrectly()
+    {
+        // Arrange
+        var client = CreateClient();
+        var employeeId = Guid.NewGuid();
+        var today = DateTime.UtcNow.Date;
+        var year = today.Year;
+        var month = today.Month;
+
+        // Create 2 attendance records with check-in and check-out
+        var workDate1 = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var checkInRequest1 = new CheckInRequest
+        {
+            EmployeeId = employeeId,
+            CheckInTime = workDate1.AddHours(9)
+        };
+        await client.PostAsJsonAsync("/api/attendances/checkin", checkInRequest1);
+
+        var checkOutRequest1 = new CheckOutRequest
+        {
+            EmployeeId = employeeId,
+            CheckOutTime = workDate1.AddHours(17)
+        };
+        await client.PostAsJsonAsync("/api/attendances/checkout", checkOutRequest1);
+
+        var workDate2 = new DateTime(year, month, 2, 0, 0, 0, DateTimeKind.Utc);
+        var checkInRequest2 = new CheckInRequest
+        {
+            EmployeeId = employeeId,
+            CheckInTime = workDate2.AddHours(9)
+        };
+        await client.PostAsJsonAsync("/api/attendances/checkin", checkInRequest2);
+
+        var checkOutRequest2 = new CheckOutRequest
+        {
+            EmployeeId = employeeId,
+            CheckOutTime = workDate2.AddHours(18)
+        };
+        await client.PostAsJsonAsync("/api/attendances/checkout", checkOutRequest2);
+
+        // Act
+        var response = await client.GetAsync($"/api/attendances/employee/{employeeId}/summary/{year}/{month}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var summary = await response.Content.ReadFromJsonAsync<MonthlyAttendanceSummaryDto>();
+        Assert.NotNull(summary);
+        Assert.Equal(employeeId, summary.EmployeeId);
+        Assert.Equal(year, summary.Year);
+        Assert.Equal(month, summary.Month);
+        Assert.Equal(2, summary.TotalWorkDays);
+        Assert.Equal(17, summary.TotalWorkHours); // 8 + 9 hours
+        Assert.Equal(8.5, summary.AverageWorkHours); // 17 / 2
+    }
+
+    [Fact]
+    public async Task GetMonthlyAttendanceSummary_WithInvalidMonth_ShouldReturnBadRequest()
+    {
+        // Arrange
+        var client = CreateClient();
+        var employeeId = Guid.NewGuid();
+        var year = DateTime.UtcNow.Year;
+        var invalidMonth = 13; // Invalid month
+
+        // Act
+        var response = await client.GetAsync($"/api/attendances/employee/{employeeId}/summary/{year}/{invalidMonth}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }
