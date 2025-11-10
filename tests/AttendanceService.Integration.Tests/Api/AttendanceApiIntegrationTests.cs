@@ -30,27 +30,23 @@ public class AttendanceApiIntegrationTests : IClassFixture<WebApplicationFactory
 
             builder.ConfigureServices(services =>
             {
-                // Remove ALL DbContext related descriptors including the options
-                var dbContextDescriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<AttendanceDbContext>));
-                if (dbContextDescriptor != null)
-                    services.Remove(dbContextDescriptor);
-
-                var dbContextOptionsDescriptor = services.Where(
-                    d => d.ServiceType == typeof(DbContextOptions)).ToList();
-                foreach (var descriptor in dbContextOptionsDescriptor)
-                    services.Remove(descriptor);
-
-                services.RemoveAll<AttendanceDbContext>();
-
                 // Add in-memory database for testing
                 services.AddDbContext<AttendanceDbContext>(options =>
                 {
                     options.UseInMemoryDatabase(dbName);
-                }, ServiceLifetime.Scoped);
+                });
 
-                // Remove Redis-related services and replace with mock
-                services.RemoveAll<AttendanceService.Application.Services.IEventPublisher>();
+                // Register repositories
+                services.AddScoped<AttendanceService.Domain.Repositories.IAttendanceRepository,
+                    AttendanceService.Infrastructure.Repositories.AttendanceRepository>();
+                services.AddScoped<AttendanceService.Domain.Repositories.ILeaveRequestRepository,
+                    AttendanceService.Infrastructure.Repositories.LeaveRequestRepository>();
+
+                // Register application services
+                services.AddScoped<AttendanceService.Application.Services.IAttendanceService,
+                    AttendanceService.Application.Services.AttendanceService>();
+
+                // Mock event publisher
                 services.AddScoped<AttendanceService.Application.Services.IEventPublisher, MockEventPublisher>();
             });
         }).CreateClient();

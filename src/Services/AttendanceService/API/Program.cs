@@ -14,14 +14,18 @@ builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 
 // データベース接続文字列とInfrastructure層の初期化
-var connectionString = builder.Configuration.GetConnectionString("AttendanceDb")
-    ?? "Data Source=attendance.db";
+// Test環境ではテストコードでDbContextを設定するためスキップ
+if (!builder.Environment.IsEnvironment("Test"))
+{
+    var connectionString = builder.Configuration.GetConnectionString("AttendanceDb")
+        ?? "Data Source=attendance.db";
 
-// Infrastructure層のサービスを追加
-builder.Services.AddInfrastructure(connectionString);
+    // Infrastructure層のサービスを追加
+    builder.Services.AddInfrastructure(connectionString);
 
-// Redis接続の追加
-builder.AddRedisClient("redis");
+    // Redis接続の追加
+    builder.AddRedisClient("redis");
+}
 
 var app = builder.Build();
 
