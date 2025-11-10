@@ -1,6 +1,7 @@
 using EmployeeService.Application.UseCases;
 using EmployeeService.Infrastructure;
 using EmployeeService.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.EmployeeService;
 using Shared.Contracts.DepartmentService;
@@ -16,16 +17,36 @@ builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 
 // 認証・認可の設定
-builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        var secretKey = builder.Configuration["Jwt:SecretKey"] 
-            ?? throw new InvalidOperationException("JWT SecretKey is not configured");
-        var issuer = builder.Configuration["Jwt:Issuer"] 
-            ?? throw new InvalidOperationException("JWT Issuer is not configured");
-        var audience = builder.Configuration["Jwt:Audience"] 
-            ?? throw new InvalidOperationException("JWT Audience is not configured");
+// カスタム認証スキーム（X-User-*ヘッダー）とJWT Bearer認証の両方をサポート
+const string CustomAuthScheme = "CustomAuth";
 
+builder.Services.AddAuthentication(options =>
+{
+    // デフォルトスキームをカスタム認証に設定（本番環境用）
+    options.DefaultAuthenticateScheme = CustomAuthScheme;
+    options.DefaultChallengeScheme = CustomAuthScheme;
+})
+.AddScheme<AuthenticationSchemeOptions, CustomAuthenticationHandler>(CustomAuthScheme, null)
+.AddJwtBearer(options =>
+{
+    // JWT Bearer認証はテスト環境で使用
+    var secretKey = builder.Configuration["Jwt:SecretKey"];
+    var issuer = builder.Configuration["Jwt:Issuer"];
+    var audience = builder.Configuration["Jwt:Audience"];
+
+    // Test環境でのみJWT設定を必須にする
+    if (builder.Environment.IsEnvironment("Test"))
+    {
+        if (string.IsNullOrEmpty(secretKey))
+            throw new InvalidOperationException("JWT SecretKey is not configured");
+        if (string.IsNullOrEmpty(issuer))
+            throw new InvalidOperationException("JWT Issuer is not configured");
+        if (string.IsNullOrEmpty(audience))
+            throw new InvalidOperationException("JWT Audience is not configured");
+    }
+
+    if (!string.IsNullOrEmpty(secretKey) && !string.IsNullOrEmpty(issuer) && !string.IsNullOrEmpty(audience))
+    {
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -37,8 +58,21 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer
             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                 System.Text.Encoding.UTF8.GetBytes(secretKey))
         };
+    }
+});
+
+// ポリシーベースの認可設定 - 複数の認証スキームをサポート
+builder.Services.AddAuthorization(options =>
+{
+    // 管理者ロールが必要なポリシー
+    options.AddPolicy("AdminPolicy", policy =>
+    {
+        policy.RequireRole("Admin");
+        // CustomAuthとJWT Bearerの両方の認証スキームをサポート
+        policy.AuthenticationSchemes.Add(CustomAuthScheme);
+        policy.AuthenticationSchemes.Add(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme);
     });
-builder.Services.AddAuthorization();
+});
 
 // データベース接続文字列とInfrastructure層の初期化 (Test環境ではスキップ)
 if (!builder.Environment.IsEnvironment("Test"))
@@ -123,7 +157,7 @@ employees.MapPost("/", async ([FromBody] CreateEmployeeRequest request, IEmploye
 .Produces<EmployeeDto>(StatusCodes.Status201Created)
 .Produces(StatusCodes.Status400BadRequest)
 .Produces(StatusCodes.Status403Forbidden)
-.RequireAuthorization(policy => policy.RequireRole("Admin"));
+.RequireAuthorization("AdminPolicy");
 
 // 従業員を更新
 employees.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateEmployeeRequest request, IEmployeeService employeeService) =>
@@ -147,7 +181,7 @@ employees.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateEmployeeRequest 
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest)
 .Produces(StatusCodes.Status403Forbidden)
-.RequireAuthorization(policy => policy.RequireRole("Admin"));
+.RequireAuthorization("AdminPolicy");
 
 // 従業員を削除
 employees.MapDelete("/{id:guid}", async (Guid id, IEmployeeService employeeService) =>
@@ -218,7 +252,7 @@ departments.MapPost("/", async ([FromBody] CreateDepartmentRequest request, IDep
 .Produces<DepartmentDto>(StatusCodes.Status201Created)
 .Produces(StatusCodes.Status400BadRequest)
 .Produces(StatusCodes.Status403Forbidden)
-.RequireAuthorization(policy => policy.RequireRole("Admin"));
+.RequireAuthorization("AdminPolicy");
 
 // 部署を更新
 departments.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateDepartmentRequest request, IDepartmentService departmentService) =>
@@ -238,7 +272,7 @@ departments.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateDepartmentRequ
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest)
 .Produces(StatusCodes.Status403Forbidden)
-.RequireAuthorization(policy => policy.RequireRole("Admin"));
+.RequireAuthorization("AdminPolicy");
 
 // 部署を削除
 departments.MapDelete("/{id:guid}", async (Guid id, IDepartmentService departmentService) =>
@@ -249,7 +283,7 @@ departments.MapDelete("/{id:guid}", async (Guid id, IDepartmentService departmen
 .WithName("DeleteDepartment")
 .Produces(StatusCodes.Status204NoContent)
 .Produces(StatusCodes.Status404NotFound)
-.RequireAuthorization(policy => policy.RequireRole("Admin"));
+.RequireAuthorization("AdminPolicy");
 
 app.Run();
 
