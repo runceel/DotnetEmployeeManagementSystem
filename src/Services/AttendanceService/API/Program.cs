@@ -4,6 +4,8 @@ using AttendanceService.Domain.Repositories;
 using AttendanceService.Infrastructure;
 using AttendanceService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
+using Scalar.AspNetCore;
 using Shared.Contracts.AttendanceService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +14,50 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Configure OpenAPI with detailed documentation
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new OpenApiInfo
+        {
+            Title = "AttendanceService API",
+            Version = "v1",
+            Description = """
+                勤怠管理サービス API
+                
+                ## 概要
+                従業員の勤怠記録、休暇申請、および月次集計を管理するためのRESTful APIです。
+                
+                ## 主要機能
+                - **勤怠記録管理**: 出退勤の記録と勤務時間の自動計算
+                - **休暇申請管理**: 有給休暇、病気休暇などの申請と承認フロー
+                - **月次集計**: 総勤務時間、平均勤務時間、遅刻回数などの集計
+                
+                ## 認証
+                APIは認証が必要です。リクエストヘッダーに適切な認証情報を含めてください。
+                """,
+            Contact = new OpenApiContact
+            {
+                Name = "開発チーム",
+                Email = "dev@example.com"
+            }
+        };
+        
+        // Add security scheme
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, OpenApiSecurityScheme>();
+        document.Components.SecuritySchemes.Add("Bearer", new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "JWT認証トークンを入力してください"
+        });
+        
+        return Task.CompletedTask;
+    });
+});
 
 // データベース接続文字列とInfrastructure層の初期化
 // Test環境ではテストコードでDbContextを設定するためスキップ
@@ -41,11 +85,37 @@ if (!app.Environment.IsEnvironment("Test"))
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // Add Scalar UI for better OpenAPI documentation experience
+    app.MapScalarApiReference(_ => _.Servers = []);
 }
 
 app.MapDefaultEndpoints();
 
 app.UseHttpsRedirection();
+
+// Global exception handler
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        
+        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        if (error != null)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(error.Error, "Unhandled exception occurred");
+            
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "内部サーバーエラーが発生しました。",
+                message = app.Environment.IsDevelopment() ? error.Error.Message : "システム管理者にお問い合わせください。",
+                traceId = context.TraceIdentifier
+            });
+        }
+    });
+});
 
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
@@ -144,6 +214,8 @@ attendances.MapGet("/", () =>
     return Results.Ok(Array.Empty<AttendanceDto>());
 })
 .WithName("GetAllAttendances")
+.WithSummary("全勤怠記録を取得")
+.WithDescription("システム内の全勤怠記録を取得します。（実装予定）")
 .Produces<IEnumerable<AttendanceDto>>();
 
 // IDで勤怠記録を取得
@@ -152,6 +224,8 @@ attendances.MapGet("/{id:guid}", (Guid id) =>
     return Results.NotFound();
 })
 .WithName("GetAttendanceById")
+.WithSummary("IDで勤怠記録を取得")
+.WithDescription("指定されたIDの勤怠記録を取得します。（実装予定）")
 .Produces<AttendanceDto>()
 .Produces(StatusCodes.Status404NotFound);
 
@@ -161,6 +235,8 @@ attendances.MapPost("/", ([FromBody] CreateAttendanceRequest request) =>
     return Results.Created($"/api/attendances/{Guid.NewGuid()}", new AttendanceDto());
 })
 .WithName("CreateAttendance")
+.WithSummary("勤怠記録を作成")
+.WithDescription("新しい勤怠記録を作成します。（実装予定）")
 .Produces<AttendanceDto>(StatusCodes.Status201Created)
 .Produces(StatusCodes.Status400BadRequest);
 
@@ -172,6 +248,8 @@ attendances.MapPost("/checkin", async (
 {
     try
     {
+        ArgumentNullException.ThrowIfNull(request);
+        
         var attendance = await attendanceService.CheckInAsync(
             request.EmployeeId,
             request.CheckInTime,
@@ -195,14 +273,23 @@ attendances.MapPost("/checkin", async (
     }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("CheckIn")
+.WithSummary("出勤を記録")
+.WithDescription("""
+    従業員の出勤時刻を記録します。
+    
+    **バリデーション:**
+    - 従業員IDは有効なGUIDである必要があります
+    - 出勤時刻は未来の日時であってはなりません
+    - 既にその日の出勤記録が存在する場合はエラーを返します
+    """)
 .Produces<AttendanceDto>()
 .Produces(StatusCodes.Status400BadRequest);
 
@@ -214,6 +301,8 @@ attendances.MapPost("/checkout", async (
 {
     try
     {
+        ArgumentNullException.ThrowIfNull(request);
+        
         var attendance = await attendanceService.CheckOutAsync(
             request.EmployeeId,
             request.CheckOutTime,
@@ -237,14 +326,23 @@ attendances.MapPost("/checkout", async (
     }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("CheckOut")
+.WithSummary("退勤を記録")
+.WithDescription("""
+    従業員の退勤時刻を記録します。
+    
+    **バリデーション:**
+    - 従業員IDは有効なGUIDである必要があります
+    - 退勤時刻は出勤時刻より後である必要があります
+    - その日の出勤記録が存在しない場合はエラーを返します
+    """)
 .Produces<AttendanceDto>()
 .Produces(StatusCodes.Status400BadRequest);
 
@@ -252,6 +350,7 @@ attendances.MapPost("/checkout", async (
 attendances.MapGet("/employee/{employeeId:guid}", async (
     Guid employeeId,
     [FromServices] IAttendanceRepository attendanceRepository,
+    [FromServices] ILogger<Program> logger,
     [FromQuery] DateTime? startDate,
     [FromQuery] DateTime? endDate,
     CancellationToken cancellationToken) =>
@@ -262,6 +361,11 @@ attendances.MapGet("/employee/{employeeId:guid}", async (
 
         if (startDate.HasValue && endDate.HasValue)
         {
+            if (startDate.Value > endDate.Value)
+            {
+                return Results.BadRequest(new { error = "開始日は終了日より前である必要があります。" });
+            }
+            
             attendanceRecords = await attendanceRepository.GetByEmployeeIdAndDateRangeAsync(
                 employeeId,
                 startDate.Value,
@@ -293,10 +397,21 @@ attendances.MapGet("/employee/{employeeId:guid}", async (
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "従業員 {EmployeeId} の勤怠履歴取得中にエラーが発生しました", employeeId);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("GetAttendancesByEmployee")
+.WithSummary("従業員の勤怠履歴を取得")
+.WithDescription("""
+    指定された従業員の勤怠履歴を取得します。
+    
+    **クエリパラメータ:**
+    - startDate: 開始日（オプション）
+    - endDate: 終了日（オプション）
+    
+    両方を指定すると期間フィルタリングが適用されます。
+    """)
 .Produces<IEnumerable<AttendanceDto>>()
 .Produces(StatusCodes.Status400BadRequest);
 
@@ -306,6 +421,7 @@ attendances.MapGet("/employee/{employeeId:guid}/summary/{year:int}/{month:int}",
     int year,
     int month,
     [FromServices] IAttendanceRepository attendanceRepository,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
@@ -313,6 +429,11 @@ attendances.MapGet("/employee/{employeeId:guid}/summary/{year:int}/{month:int}",
         if (month < 1 || month > 12)
         {
             return Results.BadRequest(new { error = "月は1から12の範囲で指定してください。" });
+        }
+        
+        if (year < 2000 || year > 2100)
+        {
+            return Results.BadRequest(new { error = "年は2000から2100の範囲で指定してください。" });
         }
 
         var startDate = new DateTime(year, month, 1);
@@ -370,10 +491,26 @@ attendances.MapGet("/employee/{employeeId:guid}/summary/{year:int}/{month:int}",
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "従業員 {EmployeeId} の月次集計取得中にエラーが発生しました (Year: {Year}, Month: {Month})", employeeId, year, month);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("GetMonthlyAttendanceSummary")
+.WithSummary("従業員の月次勤怠集計を取得")
+.WithDescription("""
+    指定された従業員の月次勤怠集計を取得します。
+    
+    **集計項目:**
+    - 総出勤日数
+    - 総勤務時間
+    - 平均勤務時間
+    - 遅刻回数（9:00以降の出勤）
+    
+    **パスパラメータ:**
+    - employeeId: 従業員ID
+    - year: 年（2000-2100）
+    - month: 月（1-12）
+    """)
 .Produces<MonthlyAttendanceSummaryDto>()
 .Produces(StatusCodes.Status400BadRequest);
 
@@ -385,6 +522,7 @@ var leaveRequests = app.MapGroup("/api/leaverequests")
 // 全休暇申請を取得
 leaveRequests.MapGet("/", async (
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
@@ -395,16 +533,20 @@ leaveRequests.MapGet("/", async (
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "全休暇申請取得中にエラーが発生しました");
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("GetAllLeaveRequests")
+.WithSummary("全休暇申請を取得")
+.WithDescription("システム内の全休暇申請を取得します。")
 .Produces<IEnumerable<LeaveRequestDto>>();
 
 // IDで休暇申請を取得
 leaveRequests.MapGet("/{id:guid}", async (
     Guid id,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
@@ -419,10 +561,13 @@ leaveRequests.MapGet("/{id:guid}", async (
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "休暇申請 {LeaveRequestId} 取得中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("GetLeaveRequestById")
+.WithSummary("IDで休暇申請を取得")
+.WithDescription("指定されたIDの休暇申請を取得します。")
 .Produces<LeaveRequestDto>()
 .Produces(StatusCodes.Status404NotFound);
 
@@ -430,6 +575,7 @@ leaveRequests.MapGet("/{id:guid}", async (
 leaveRequests.MapGet("/employee/{employeeId:guid}", async (
     Guid employeeId,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
@@ -440,23 +586,27 @@ leaveRequests.MapGet("/employee/{employeeId:guid}", async (
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "従業員 {EmployeeId} の休暇申請取得中にエラーが発生しました", employeeId);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("GetLeaveRequestsByEmployee")
+.WithSummary("従業員別の休暇申請を取得")
+.WithDescription("指定された従業員の全休暇申請を取得します。")
 .Produces<IEnumerable<LeaveRequestDto>>();
 
 // ステータス別の休暇申請を取得
 leaveRequests.MapGet("/status/{status}", async (
     string status,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
     {
         if (!Enum.TryParse<LeaveRequestStatus>(status, ignoreCase: true, out var leaveStatus))
         {
-            return Results.BadRequest(new { error = "無効なステータスです。" });
+            return Results.BadRequest(new { error = "無効なステータスです。有効な値: Pending, Approved, Rejected, Cancelled" });
         }
 
         var requests = await leaveRequestService.GetLeaveRequestsByStatusAsync(leaveStatus, cancellationToken);
@@ -465,23 +615,37 @@ leaveRequests.MapGet("/status/{status}", async (
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "ステータス {Status} の休暇申請取得中にエラーが発生しました", status);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("GetLeaveRequestsByStatus")
+.WithSummary("ステータス別の休暇申請を取得")
+.WithDescription("""
+    指定されたステータスの休暇申請を取得します。
+    
+    **有効なステータス:**
+    - Pending: 承認待ち
+    - Approved: 承認済み
+    - Rejected: 却下
+    - Cancelled: キャンセル
+    """)
 .Produces<IEnumerable<LeaveRequestDto>>();
 
 // 休暇申請を作成
 leaveRequests.MapPost("/", async (
     [FromBody] CreateLeaveRequestRequest request,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
     {
+        ArgumentNullException.ThrowIfNull(request);
+        
         if (!Enum.TryParse<LeaveType>(request.Type, ignoreCase: true, out var leaveType))
         {
-            return Results.BadRequest(new { error = "無効な休暇種別です。" });
+            return Results.BadRequest(new { error = "無効な休暇種別です。有効な値: PaidLeave, SickLeave, SpecialLeave, Unpaid" });
         }
 
         var leaveRequest = await leaveRequestService.CreateLeaveRequestAsync(
@@ -496,14 +660,28 @@ leaveRequests.MapPost("/", async (
     }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("CreateLeaveRequest")
+.WithSummary("休暇申請を作成")
+.WithDescription("""
+    新しい休暇申請を作成します。
+    
+    **休暇種別:**
+    - PaidLeave: 有給休暇
+    - SickLeave: 病気休暇
+    - SpecialLeave: 特別休暇
+    - Unpaid: 無給休暇
+    
+    **バリデーション:**
+    - 開始日は終了日より前である必要があります
+    - 過去の日付は指定できません
+    """)
 .Produces<LeaveRequestDto>(StatusCodes.Status201Created)
 .Produces(StatusCodes.Status400BadRequest);
 
@@ -512,10 +690,13 @@ leaveRequests.MapPost("/{id:guid}/approve", async (
     Guid id,
     [FromBody] ApproveLeaveRequestRequest request,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
     {
+        ArgumentNullException.ThrowIfNull(request);
+        
         var leaveRequest = await leaveRequestService.ApproveLeaveRequestAsync(
             id,
             request.ApproverId,
@@ -526,10 +707,13 @@ leaveRequests.MapPost("/{id:guid}/approve", async (
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "休暇申請 {LeaveRequestId} の承認処理中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("ApproveLeaveRequest")
+.WithSummary("休暇申請を承認")
+.WithDescription("指定された休暇申請を承認します。承認者IDとコメントを指定できます。")
 .Produces<LeaveRequestDto>()
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest);
@@ -539,10 +723,13 @@ leaveRequests.MapPost("/{id:guid}/reject", async (
     Guid id,
     [FromBody] RejectLeaveRequestRequest request,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
     {
+        ArgumentNullException.ThrowIfNull(request);
+        
         var leaveRequest = await leaveRequestService.RejectLeaveRequestAsync(
             id,
             request.ApproverId,
@@ -553,10 +740,13 @@ leaveRequests.MapPost("/{id:guid}/reject", async (
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "休暇申請 {LeaveRequestId} の却下処理中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("RejectLeaveRequest")
+.WithSummary("休暇申請を却下")
+.WithDescription("指定された休暇申請を却下します。承認者IDと却下理由を指定できます。")
 .Produces<LeaveRequestDto>()
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest);
@@ -565,6 +755,7 @@ leaveRequests.MapPost("/{id:guid}/reject", async (
 leaveRequests.MapPost("/{id:guid}/cancel", async (
     Guid id,
     [FromServices] ILeaveRequestService leaveRequestService,
+    [FromServices] ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     try
@@ -574,10 +765,13 @@ leaveRequests.MapPost("/{id:guid}/cancel", async (
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        logger.LogError(ex, "休暇申請 {LeaveRequestId} のキャンセル処理中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
     }
 })
 .WithName("CancelLeaveRequest")
+.WithSummary("休暇申請をキャンセル")
+.WithDescription("指定された休暇申請をキャンセルします。申請者のみキャンセルできます。")
 .Produces<LeaveRequestDto>()
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest);
