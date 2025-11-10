@@ -1,0 +1,55 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- Aspire Packages -->
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.2" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="9.5.2" />
+    <PackageVersion Include="Aspire.StackExchange.Redis" Version="9.5.2" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.9.0" />
+    
+    <!-- ASP.NET Core Packages -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
+    
+    <!-- Entity Framework Core Packages -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
+    
+    <!-- Microsoft Extensions Packages -->
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.5.2" />
+    
+    <!-- OpenTelemetry Packages -->
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.13.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.13.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.13.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.13.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.13.0" />
+    
+    <!-- Test Packages -->
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    
+    <!-- Other Packages -->
+    <PackageVersion Include="MudBlazor" Version="8.14.0" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.9.32" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+  </ItemGroup>
+</Project>
