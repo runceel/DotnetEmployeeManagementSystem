@@ -44,6 +44,7 @@ builder.Services.AddScoped<IEventPublisher, RedisEventPublisher>();
 if (!builder.Environment.IsEnvironment("Test"))
 {
     builder.Services.AddHostedService<EmployeeEventConsumer>();
+    builder.Services.AddHostedService<AttendanceEventConsumer>();
     builder.Services.AddHostedService<NotificationProcessorWorker>();
 }
 

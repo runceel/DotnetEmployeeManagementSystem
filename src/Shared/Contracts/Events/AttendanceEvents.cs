@@ -50,3 +50,42 @@ public record CheckOutRecordedEvent
     public DateTime WorkDate { get; init; }
     public double WorkHours { get; init; }
 }
+
+/// <summary>
+/// 遅刻検知イベント
+/// </summary>
+public record LateArrivalDetectedEvent
+{
+    public Guid AttendanceId { get; init; }
+    public Guid EmployeeId { get; init; }
+    public DateTime CheckInTime { get; init; }
+    public DateTime WorkDate { get; init; }
+    public int LateMinutes { get; init; }
+}
+
+/// <summary>
+/// 早退検知イベント
+/// </summary>
+public record EarlyLeavingDetectedEvent
+{
+    public Guid AttendanceId { get; init; }
+    public Guid EmployeeId { get; init; }
+    public DateTime CheckInTime { get; init; }
+    public DateTime CheckOutTime { get; init; }
+    public DateTime WorkDate { get; init; }
+    public double WorkHours { get; init; }
+}
+
+/// <summary>
+/// 長時間労働検知イベント
+/// </summary>
+public record OvertimeDetectedEvent
+{
+    public Guid AttendanceId { get; init; }
+    public Guid EmployeeId { get; init; }
+    public DateTime CheckInTime { get; init; }
+    public DateTime CheckOutTime { get; init; }
+    public DateTime WorkDate { get; init; }
+    public double WorkHours { get; init; }
+    public double OvertimeHours { get; init; }
+}

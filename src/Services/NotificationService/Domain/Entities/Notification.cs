@@ -164,4 +164,14 @@ public static class NotificationType
     public const string EmployeeUpdated = "EmployeeUpdated";
     public const string EmployeeDeleted = "EmployeeDeleted";
     public const string Manual = "Manual";
+    
+    // 勤怠異常通知
+    public const string LateArrival = "LateArrival";
+    public const string EarlyLeaving = "EarlyLeaving";
+    public const string Overtime = "Overtime";
+    
+    // 休暇申請通知
+    public const string LeaveRequestCreated = "LeaveRequestCreated";
+    public const string LeaveRequestApproved = "LeaveRequestApproved";
+    public const string LeaveRequestRejected = "LeaveRequestRejected";
 }

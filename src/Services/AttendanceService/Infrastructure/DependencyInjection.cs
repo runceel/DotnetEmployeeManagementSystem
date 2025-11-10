@@ -28,6 +28,9 @@ public static class DependencyInjection
         services.AddScoped<IEventPublisher, RedisEventPublisher>();
         services.AddScoped<Application.Services.IAttendanceService, Application.Services.AttendanceService>();
         services.AddScoped<ILeaveRequestService, LeaveRequestService>();
+        
+        // 勤怠異常検知サービスの登録
+        services.AddScoped<Domain.Services.IAttendanceAnomalyDetector, Domain.Services.AttendanceAnomalyDetector>();
 
         return services;
     }
