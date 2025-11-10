@@ -46,6 +46,12 @@
   - デバッグ方法
   - パフォーマンス最適化
 
+- **[Blazor レンダーモード設定ガイド](blazor-rendermode-configuration.md)** - Blazor レンダーモード設定
+  - グローバル Interactive Server 設定
+  - レンダーモードの種類と選択
+  - 設定方法とベストプラクティス
+  - トラブルシューティング
+
 ### 運用
 
 - **[Aspireダッシュボード](aspire-dashboard.md)** - 監視と管理
@@ -99,6 +105,9 @@
 
 ### 通知サービスについて知りたい
 → [通知サービス実装ガイド](notification-service.md)
+
+### Blazor のレンダーモード設定について知りたい
+→ [Blazor レンダーモード設定ガイド](blazor-rendermode-configuration.md)
 
 ## 📖 技術スタック
 
