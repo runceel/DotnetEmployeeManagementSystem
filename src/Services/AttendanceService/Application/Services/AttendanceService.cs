@@ -26,8 +26,6 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     public async Task<Attendance> CheckInAsync(Guid employeeId, DateTime checkInTime, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(employeeId);
-
         if (employeeId == Guid.Empty)
             throw new ArgumentException("従業員IDは必須です。", nameof(employeeId));
 
@@ -82,8 +80,6 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     public async Task<Attendance> CheckOutAsync(Guid employeeId, DateTime checkOutTime, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(employeeId);
-
         if (employeeId == Guid.Empty)
             throw new ArgumentException("従業員IDは必須です。", nameof(employeeId));
 

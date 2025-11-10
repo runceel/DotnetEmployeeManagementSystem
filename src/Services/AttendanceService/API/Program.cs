@@ -217,3 +217,6 @@ leaveRequests.MapPost("/{id:guid}/cancel", (Guid id) =>
 .Produces(StatusCodes.Status400BadRequest);
 
 app.Run();
+
+// Make Program class accessible for integration tests
+public partial class Program { }
