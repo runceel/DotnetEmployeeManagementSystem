@@ -55,7 +55,7 @@ public class LeaveRequestServiceTests
         Assert.Equal(LeaveRequestStatus.Pending, result.Status);
 
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<LeaveRequest>(), It.IsAny<CancellationToken>()), Times.Once);
-        _mockEventPublisher.Verify(e => e.PublishAsync("leave-requests", It.IsAny<LeaveRequestCreatedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockEventPublisher.Verify(e => e.PublishAsync("leaverequest:created", It.IsAny<LeaveRequestCreatedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class LeaveRequestServiceTests
         Assert.Equal(comment, result.ApproverComment);
 
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<LeaveRequest>(), It.IsAny<CancellationToken>()), Times.Once);
-        _mockEventPublisher.Verify(e => e.PublishAsync("leave-requests", It.IsAny<LeaveRequestApprovedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockEventPublisher.Verify(e => e.PublishAsync("leaverequest:approved", It.IsAny<LeaveRequestApprovedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public class LeaveRequestServiceTests
         Assert.Equal(comment, result.ApproverComment);
 
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<LeaveRequest>(), It.IsAny<CancellationToken>()), Times.Once);
-        _mockEventPublisher.Verify(e => e.PublishAsync("leave-requests", It.IsAny<LeaveRequestRejectedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockEventPublisher.Verify(e => e.PublishAsync("leaverequest:rejected", It.IsAny<LeaveRequestRejectedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public class LeaveRequestServiceTests
         Assert.Equal(LeaveRequestStatus.Cancelled, result.Status);
 
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<LeaveRequest>(), It.IsAny<CancellationToken>()), Times.Once);
-        _mockEventPublisher.Verify(e => e.PublishAsync("leave-requests", It.IsAny<LeaveRequestCancelledEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockEventPublisher.Verify(e => e.PublishAsync("leaverequest:cancelled", It.IsAny<LeaveRequestCancelledEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

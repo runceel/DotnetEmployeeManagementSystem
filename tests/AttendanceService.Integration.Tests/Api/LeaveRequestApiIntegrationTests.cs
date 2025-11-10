@@ -46,6 +46,10 @@ public class LeaveRequestApiIntegrationTests : IClassFixture<WebApplicationFacto
                 services.AddScoped<AttendanceService.Application.Services.ILeaveRequestService,
                     AttendanceService.Application.Services.LeaveRequestService>();
 
+                // Register domain services
+                services.AddScoped<AttendanceService.Domain.Services.IAttendanceAnomalyDetector,
+                    AttendanceService.Domain.Services.AttendanceAnomalyDetector>();
+
                 // Mock event publisher
                 services.AddScoped<AttendanceService.Application.Services.IEventPublisher, MockEventPublisher>();
             });
