@@ -125,7 +125,8 @@ public static class DbInitializer
                         _ => LeaveType.UnpaidLeave
                     };
 
-                    var leaveStartDate = startDate.AddDays(random.Next(90));
+                    // 未来の日付で休暇申請を作成（現在日から+10日～+100日の範囲）
+                    var leaveStartDate = DateTime.UtcNow.Date.AddDays(10 + random.Next(90));
                     var leaveDays = random.Next(1, 4);
                     var leaveEndDate = leaveStartDate.AddDays(leaveDays - 1);
 
