@@ -61,7 +61,7 @@ public class LeaveRequestService : ILeaveRequestService
             CreatedAt = leaveRequest.CreatedAt
         };
 
-        await _eventPublisher.PublishAsync("leave-requests", @event, cancellationToken);
+        await _eventPublisher.PublishAsync("leaverequest:created", @event, cancellationToken);
 
         return leaveRequest;
     }
@@ -133,7 +133,7 @@ public class LeaveRequestService : ILeaveRequestService
             ApprovedAt = leaveRequest.ApprovedAt!.Value
         };
 
-        await _eventPublisher.PublishAsync("leave-requests", @event, cancellationToken);
+        await _eventPublisher.PublishAsync("leaverequest:approved", @event, cancellationToken);
 
         return leaveRequest;
     }
@@ -169,7 +169,7 @@ public class LeaveRequestService : ILeaveRequestService
             RejectedAt = leaveRequest.ApprovedAt!.Value
         };
 
-        await _eventPublisher.PublishAsync("leave-requests", @event, cancellationToken);
+        await _eventPublisher.PublishAsync("leaverequest:rejected", @event, cancellationToken);
 
         return leaveRequest;
     }
@@ -199,7 +199,7 @@ public class LeaveRequestService : ILeaveRequestService
             CancelledAt = leaveRequest.UpdatedAt
         };
 
-        await _eventPublisher.PublishAsync("leave-requests", @event, cancellationToken);
+        await _eventPublisher.PublishAsync("leaverequest:cancelled", @event, cancellationToken);
 
         return leaveRequest;
     }
