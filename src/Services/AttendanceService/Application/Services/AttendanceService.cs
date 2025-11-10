@@ -1,6 +1,7 @@
 using AttendanceService.Domain.Entities;
 using AttendanceService.Domain.Enums;
 using AttendanceService.Domain.Repositories;
+using AttendanceService.Domain.Services;
 using Shared.Contracts.Events;
 
 namespace AttendanceService.Application.Services;
@@ -12,13 +13,16 @@ public class AttendanceService : IAttendanceService
 {
     private readonly IAttendanceRepository _attendanceRepository;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IAttendanceAnomalyDetector _anomalyDetector;
 
     public AttendanceService(
         IAttendanceRepository attendanceRepository,
-        IEventPublisher eventPublisher)
+        IEventPublisher eventPublisher,
+        IAttendanceAnomalyDetector anomalyDetector)
     {
         _attendanceRepository = attendanceRepository ?? throw new ArgumentNullException(nameof(attendanceRepository));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
+        _anomalyDetector = anomalyDetector ?? throw new ArgumentNullException(nameof(anomalyDetector));
     }
 
     /// <summary>
@@ -72,6 +76,20 @@ public class AttendanceService : IAttendanceService
             WorkDate = workDate
         }, cancellationToken);
 
+        // 遅刻検知
+        if (_anomalyDetector.IsLateArrival(checkInTime))
+        {
+            var lateMinutes = _anomalyDetector.CalculateLateMinutes(checkInTime);
+            await _eventPublisher.PublishAsync("attendance:late-arrival", new LateArrivalDetectedEvent
+            {
+                AttendanceId = result.Id,
+                EmployeeId = result.EmployeeId,
+                CheckInTime = checkInTime,
+                WorkDate = workDate,
+                LateMinutes = lateMinutes
+            }, cancellationToken);
+        }
+
         return result;
     }
 
@@ -107,6 +125,36 @@ public class AttendanceService : IAttendanceService
             WorkDate = workDate,
             WorkHours = workHours
         }, cancellationToken);
+
+        // 早退検知
+        if (_anomalyDetector.IsEarlyLeaving(attendance.CheckInTime!.Value, checkOutTime))
+        {
+            await _eventPublisher.PublishAsync("attendance:early-leaving", new EarlyLeavingDetectedEvent
+            {
+                AttendanceId = attendance.Id,
+                EmployeeId = attendance.EmployeeId,
+                CheckInTime = attendance.CheckInTime!.Value,
+                CheckOutTime = checkOutTime,
+                WorkDate = workDate,
+                WorkHours = workHours
+            }, cancellationToken);
+        }
+
+        // 長時間労働検知
+        if (_anomalyDetector.IsOvertime(workHours))
+        {
+            var overtimeHours = _anomalyDetector.CalculateOvertimeHours(workHours);
+            await _eventPublisher.PublishAsync("attendance:overtime", new OvertimeDetectedEvent
+            {
+                AttendanceId = attendance.Id,
+                EmployeeId = attendance.EmployeeId,
+                CheckInTime = attendance.CheckInTime!.Value,
+                CheckOutTime = checkOutTime,
+                WorkDate = workDate,
+                WorkHours = workHours,
+                OvertimeHours = overtimeHours
+            }, cancellationToken);
+        }
 
         return attendance;
     }

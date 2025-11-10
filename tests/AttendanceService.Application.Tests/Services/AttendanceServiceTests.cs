@@ -2,6 +2,7 @@ using AttendanceService.Application.Services;
 using AttendanceService.Domain.Entities;
 using AttendanceService.Domain.Enums;
 using AttendanceService.Domain.Repositories;
+using AttendanceService.Domain.Services;
 using Moq;
 using Shared.Contracts.Events;
 
@@ -11,13 +12,18 @@ public class AttendanceServiceTests
 {
     private readonly Mock<IAttendanceRepository> _mockRepository;
     private readonly Mock<IEventPublisher> _mockEventPublisher;
+    private readonly Mock<IAttendanceAnomalyDetector> _mockAnomalyDetector;
     private readonly Application.Services.AttendanceService _service;
 
     public AttendanceServiceTests()
     {
         _mockRepository = new Mock<IAttendanceRepository>();
         _mockEventPublisher = new Mock<IEventPublisher>();
-        _service = new Application.Services.AttendanceService(_mockRepository.Object, _mockEventPublisher.Object);
+        _mockAnomalyDetector = new Mock<IAttendanceAnomalyDetector>();
+        _service = new Application.Services.AttendanceService(
+            _mockRepository.Object, 
+            _mockEventPublisher.Object,
+            _mockAnomalyDetector.Object);
     }
 
     [Fact]
