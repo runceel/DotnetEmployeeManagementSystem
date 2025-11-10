@@ -283,9 +283,46 @@ dotnet test tests/AttendanceService.Integration.Tests
 - [ ] 勤怠の編集・削除機能
 - [ ] 承認フロー機能（勤怠記録の承認が必要な場合）
 
+## 本番運用ドキュメント
+
+### OpenAPI / Swagger ドキュメント
+
+開発環境では、Scalar UI を使用してインタラクティブな API ドキュメントにアクセスできます。
+
+```
+http://localhost:{port}/scalar
+```
+
+または、OpenAPI JSON 仕様を取得できます。
+
+```
+http://localhost:{port}/openapi/v1.json
+```
+
+**本番環境でのアクセス**: セキュリティ上の理由から、本番環境では OpenAPI/Scalar エンドポイントは自動的に無効化されます。
+
+### セキュリティ機能
+
+1. **JWT 認証**: 全APIエンドポイントで JWT Bearer 認証をサポート
+2. **グローバル例外ハンドラー**: 予期しないエラーを適切に処理し、詳細情報の漏洩を防止
+3. **入力バリデーション**: ArgumentNullException.ThrowIfNull による厳格な null チェック
+4. **構造化ログ**: エラーとトレース情報を構造化形式でログ記録
+
+### 可観測性
+
+- **ヘルスチェック**: `/health`, `/health/live`, `/health/ready` エンドポイント
+- **OpenTelemetry**: 分散トレーシングとメトリクス収集
+- **構造化ログ**: JSON 形式でログ出力、traceId による追跡
+
 ## 関連ドキュメント
 
+### 開発
 - [アーキテクチャ概要](./architecture.md)
 - [開発ガイド](./development-guide.md)
 - [データベース管理](./database.md)
 - [通知サービス](./notification-service.md)
+
+### 本番運用
+- **[本番デプロイメントガイド](./attendance-service-production-deployment.md)** - デプロイ手順と環境設定
+- **[API リファレンス](./attendance-service-api-reference.md)** - 完全なAPIドキュメント
+- **[トラブルシューティングガイド](./attendance-service-troubleshooting.md)** - 問題解決方法
