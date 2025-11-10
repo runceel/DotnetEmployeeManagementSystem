@@ -9,6 +9,19 @@
     <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/AttendanceService/" />
+  <Folder Name="/src/Services/AttendanceService/API/">
+    <Project Path="src/Services/AttendanceService/API/AttendanceService.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/AttendanceService/Application/">
+    <Project Path="src/Services/AttendanceService/Application/AttendanceService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/AttendanceService/Domain/">
+    <Project Path="src/Services/AttendanceService/Domain/AttendanceService.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/AttendanceService/Infrastructure/">
+    <Project Path="src/Services/AttendanceService/Infrastructure/AttendanceService.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Services/AuthService/" />
   <Folder Name="/src/Services/AuthService/API/">
     <Project Path="src/Services/AuthService/API/AuthService.API.csproj" />
