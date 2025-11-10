@@ -165,35 +165,151 @@ var leaveRequests = app.MapGroup("/api/leaverequests")
     .WithOpenApi();
 
 // 全休暇申請を取得
-leaveRequests.MapGet("/", () =>
+leaveRequests.MapGet("/", async (
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
 {
-    return Results.Ok(Array.Empty<LeaveRequestDto>());
+    try
+    {
+        var requests = await leaveRequestService.GetAllLeaveRequestsAsync(cancellationToken);
+        var dtos = requests.Select(MapToDto);
+        return Results.Ok(dtos);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("GetAllLeaveRequests")
 .Produces<IEnumerable<LeaveRequestDto>>();
 
 // IDで休暇申請を取得
-leaveRequests.MapGet("/{id:guid}", (Guid id) =>
+leaveRequests.MapGet("/{id:guid}", async (
+    Guid id,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
 {
-    return Results.NotFound();
+    try
+    {
+        var leaveRequest = await leaveRequestService.GetLeaveRequestByIdAsync(id, cancellationToken);
+        if (leaveRequest == null)
+        {
+            return Results.NotFound(new { error = "休暇申請が見つかりません。" });
+        }
+
+        return Results.Ok(MapToDto(leaveRequest));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("GetLeaveRequestById")
 .Produces<LeaveRequestDto>()
 .Produces(StatusCodes.Status404NotFound);
 
-// 休暇申請を作成
-leaveRequests.MapPost("/", ([FromBody] CreateLeaveRequestRequest request) =>
+// 従業員別の休暇申請を取得
+leaveRequests.MapGet("/employee/{employeeId:guid}", async (
+    Guid employeeId,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
 {
-    return Results.Created($"/api/leaverequests/{Guid.NewGuid()}", new LeaveRequestDto());
+    try
+    {
+        var requests = await leaveRequestService.GetLeaveRequestsByEmployeeIdAsync(employeeId, cancellationToken);
+        var dtos = requests.Select(MapToDto);
+        return Results.Ok(dtos);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("GetLeaveRequestsByEmployee")
+.Produces<IEnumerable<LeaveRequestDto>>();
+
+// ステータス別の休暇申請を取得
+leaveRequests.MapGet("/status/{status}", async (
+    string status,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        if (!Enum.TryParse<LeaveRequestStatus>(status, ignoreCase: true, out var leaveStatus))
+        {
+            return Results.BadRequest(new { error = "無効なステータスです。" });
+        }
+
+        var requests = await leaveRequestService.GetLeaveRequestsByStatusAsync(leaveStatus, cancellationToken);
+        var dtos = requests.Select(MapToDto);
+        return Results.Ok(dtos);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("GetLeaveRequestsByStatus")
+.Produces<IEnumerable<LeaveRequestDto>>();
+
+// 休暇申請を作成
+leaveRequests.MapPost("/", async (
+    [FromBody] CreateLeaveRequestRequest request,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        if (!Enum.TryParse<LeaveType>(request.Type, ignoreCase: true, out var leaveType))
+        {
+            return Results.BadRequest(new { error = "無効な休暇種別です。" });
+        }
+
+        var leaveRequest = await leaveRequestService.CreateLeaveRequestAsync(
+            request.EmployeeId,
+            leaveType,
+            request.StartDate,
+            request.EndDate,
+            request.Reason,
+            cancellationToken);
+
+        return Results.Created($"/api/leaverequests/{leaveRequest.Id}", MapToDto(leaveRequest));
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("CreateLeaveRequest")
 .Produces<LeaveRequestDto>(StatusCodes.Status201Created)
 .Produces(StatusCodes.Status400BadRequest);
 
 // 休暇申請を承認
-leaveRequests.MapPost("/{id:guid}/approve", (Guid id, [FromBody] ApproveLeaveRequestRequest request) =>
+leaveRequests.MapPost("/{id:guid}/approve", async (
+    Guid id,
+    [FromBody] ApproveLeaveRequestRequest request,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
 {
-    return Results.Ok(new LeaveRequestDto());
+    try
+    {
+        var leaveRequest = await leaveRequestService.ApproveLeaveRequestAsync(
+            id,
+            request.ApproverId,
+            request.Comment,
+            cancellationToken);
+
+        return Results.Ok(MapToDto(leaveRequest));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("ApproveLeaveRequest")
 .Produces<LeaveRequestDto>()
@@ -201,9 +317,26 @@ leaveRequests.MapPost("/{id:guid}/approve", (Guid id, [FromBody] ApproveLeaveReq
 .Produces(StatusCodes.Status400BadRequest);
 
 // 休暇申請を却下
-leaveRequests.MapPost("/{id:guid}/reject", (Guid id, [FromBody] RejectLeaveRequestRequest request) =>
+leaveRequests.MapPost("/{id:guid}/reject", async (
+    Guid id,
+    [FromBody] RejectLeaveRequestRequest request,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
 {
-    return Results.Ok(new LeaveRequestDto());
+    try
+    {
+        var leaveRequest = await leaveRequestService.RejectLeaveRequestAsync(
+            id,
+            request.ApproverId,
+            request.Comment,
+            cancellationToken);
+
+        return Results.Ok(MapToDto(leaveRequest));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("RejectLeaveRequest")
 .Produces<LeaveRequestDto>()
@@ -211,14 +344,46 @@ leaveRequests.MapPost("/{id:guid}/reject", (Guid id, [FromBody] RejectLeaveReque
 .Produces(StatusCodes.Status400BadRequest);
 
 // 休暇申請をキャンセル
-leaveRequests.MapPost("/{id:guid}/cancel", (Guid id) =>
+leaveRequests.MapPost("/{id:guid}/cancel", async (
+    Guid id,
+    [FromServices] ILeaveRequestService leaveRequestService,
+    CancellationToken cancellationToken) =>
 {
-    return Results.Ok(new LeaveRequestDto());
+    try
+    {
+        var leaveRequest = await leaveRequestService.CancelLeaveRequestAsync(id, cancellationToken);
+        return Results.Ok(MapToDto(leaveRequest));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("CancelLeaveRequest")
 .Produces<LeaveRequestDto>()
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest);
+
+// DTO変換ヘルパー
+static LeaveRequestDto MapToDto(AttendanceService.Domain.Entities.LeaveRequest leaveRequest)
+{
+    return new LeaveRequestDto
+    {
+        Id = leaveRequest.Id,
+        EmployeeId = leaveRequest.EmployeeId,
+        Type = leaveRequest.Type.ToString(),
+        StartDate = leaveRequest.StartDate,
+        EndDate = leaveRequest.EndDate,
+        Reason = leaveRequest.Reason,
+        Status = leaveRequest.Status.ToString(),
+        ApproverId = leaveRequest.ApproverId,
+        ApprovedAt = leaveRequest.ApprovedAt,
+        ApproverComment = leaveRequest.ApproverComment,
+        Days = leaveRequest.CalculateDays(),
+        CreatedAt = leaveRequest.CreatedAt,
+        UpdatedAt = leaveRequest.UpdatedAt
+    };
+}
 
 app.Run();
 
