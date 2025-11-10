@@ -1,0 +1,226 @@
+@page "/attendances"
+@using Shared.Contracts.AttendanceService
+@using Shared.Contracts.EmployeeService
+@using BlazorWeb.Services
+@inject IAttendanceApiClient AttendanceApiClient
+@inject IEmployeeApiClient EmployeeApiClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>勤怠管理</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">勤怠管理</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="Guid?" Label="従業員を選択" @bind-Value="_selectedEmployeeId" Variant="Variant.Outlined">
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">全員</MudSelectItem>
+                            @foreach (var employee in _employees)
+                            {
+                                <MudSelectItem T="Guid?" Value="@employee.Id">@employee.LastName @employee.FirstName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudDatePicker Label="開始日" @bind-Date="_startDate" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudDatePicker Label="終了日" @bind-Date="_endDate" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="2" Class="d-flex align-center">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadAttendancesAsync" FullWidth="true">
+                            検索
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_selectedEmployeeId.HasValue)
+        {
+            <MudCard Class="mb-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">月次集計</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" md="2">
+                            <MudNumericField T="int" Label="年" @bind-Value="_summaryYear" Variant="Variant.Outlined" Min="2020" Max="2100" />
+                        </MudItem>
+                        <MudItem xs="12" md="2">
+                            <MudNumericField T="int" Label="月" @bind-Value="_summaryMonth" Variant="Variant.Outlined" Min="1" Max="12" />
+                        </MudItem>
+                        <MudItem xs="12" md="2" Class="d-flex align-center">
+                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="LoadMonthlySummaryAsync" FullWidth="true">
+                                集計表示
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (_monthlySummary != null)
+                    {
+                        <MudDivider Class="my-4" />
+                        <MudGrid>
+                            <MudItem xs="6" md="3">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">出勤日数</MudText>
+                                <MudText Typo="Typo.h6">@_monthlySummary.TotalWorkDays 日</MudText>
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">総勤務時間</MudText>
+                                <MudText Typo="Typo.h6">@_monthlySummary.TotalWorkHours.ToString("F1") 時間</MudText>
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">平均勤務時間</MudText>
+                                <MudText Typo="Typo.h6">@_monthlySummary.AverageWorkHours.ToString("F1") 時間/日</MudText>
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">遅刻回数</MudText>
+                                <MudText Typo="Typo.h6">@_monthlySummary.LateDays 回</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <MudTable Items="@_attendances" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_isLoading" Dense="true">
+            <HeaderContent>
+                <MudTh>日付</MudTh>
+                <MudTh>従業員</MudTh>
+                <MudTh>出勤時刻</MudTh>
+                <MudTh>退勤時刻</MudTh>
+                <MudTh>勤務時間</MudTh>
+                <MudTh>種別</MudTh>
+                <MudTh>備考</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="日付">@context.WorkDate.ToString("yyyy/MM/dd")</MudTd>
+                <MudTd DataLabel="従業員">@GetEmployeeName(context.EmployeeId)</MudTd>
+                <MudTd DataLabel="出勤時刻">@(context.CheckInTime?.ToString("HH:mm") ?? "-")</MudTd>
+                <MudTd DataLabel="退勤時刻">@(context.CheckOutTime?.ToString("HH:mm") ?? "-")</MudTd>
+                <MudTd DataLabel="勤務時間">@(context.WorkHours?.ToString("F1") ?? "-") 時間</MudTd>
+                <MudTd DataLabel="種別">@GetAttendanceTypeLabel(context.Type)</MudTd>
+                <MudTd DataLabel="備考">@context.Notes</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private bool _isLoading = true;
+    private List<EmployeeDto> _employees = new();
+    private List<AttendanceDto> _attendances = new();
+    private Guid? _selectedEmployeeId;
+    private DateTime? _startDate = DateTime.Today.AddMonths(-1);
+    private DateTime? _endDate = DateTime.Today;
+    private int _summaryYear = DateTime.Today.Year;
+    private int _summaryMonth = DateTime.Today.Month;
+    private MonthlyAttendanceSummaryDto? _monthlySummary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployeesAsync();
+        await LoadAttendancesAsync();
+    }
+
+    private async Task LoadEmployeesAsync()
+    {
+        try
+        {
+            var employees = await EmployeeApiClient.GetAllEmployeesAsync();
+            _employees = employees.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"従業員一覧の取得に失敗しました: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadAttendancesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            if (_selectedEmployeeId.HasValue)
+            {
+                var attendances = await AttendanceApiClient.GetAttendancesByEmployeeAsync(
+                    _selectedEmployeeId.Value,
+                    _startDate,
+                    _endDate);
+                _attendances = attendances.OrderByDescending(a => a.WorkDate).ToList();
+            }
+            else
+            {
+                // 全従業員の勤怠を取得する場合
+                var allAttendances = new List<AttendanceDto>();
+                foreach (var employee in _employees)
+                {
+                    var attendances = await AttendanceApiClient.GetAttendancesByEmployeeAsync(
+                        employee.Id,
+                        _startDate,
+                        _endDate);
+                    allAttendances.AddRange(attendances);
+                }
+                _attendances = allAttendances.OrderByDescending(a => a.WorkDate).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"勤怠履歴の取得に失敗しました: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadMonthlySummaryAsync()
+    {
+        if (!_selectedEmployeeId.HasValue)
+        {
+            Snackbar.Add("従業員を選択してください", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _monthlySummary = await AttendanceApiClient.GetMonthlyAttendanceSummaryAsync(
+                _selectedEmployeeId.Value,
+                _summaryYear,
+                _summaryMonth);
+            Snackbar.Add("月次集計を取得しました", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"月次集計の取得に失敗しました: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetEmployeeName(Guid employeeId)
+    {
+        var employee = _employees.FirstOrDefault(e => e.Id == employeeId);
+        return employee != null ? $"{employee.LastName} {employee.FirstName}" : "不明";
+    }
+
+    private string GetAttendanceTypeLabel(string type)
+    {
+        return type switch
+        {
+            "Normal" => "通常勤務",
+            "Remote" => "リモート",
+            "BusinessTrip" => "出張",
+            "HalfDay" => "半日勤務",
+            _ => type
+        };
+    }
+}
