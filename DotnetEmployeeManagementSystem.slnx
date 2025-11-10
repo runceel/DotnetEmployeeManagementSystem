@@ -69,6 +69,7 @@
     <Project Path="src/WebApps/BlazorWeb/BlazorWeb.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AttendanceService.Domain.Tests/AttendanceService.Domain.Tests.csproj" />
     <Project Path="tests/AuthService.Tests/AuthService.Tests.csproj" />
     <Project Path="tests/EmployeeService.Application.Tests/EmployeeService.Application.Tests.csproj" />
     <Project Path="tests/EmployeeService.Domain.Tests/EmployeeService.Domain.Tests.csproj" />
