@@ -277,6 +277,110 @@ public class YourServiceTests
 }
 ```
 
+### 統合テスト
+
+統合テストではAPIエンドポイントとデータベースを含む実際のアプリケーション動作をテストします。
+
+#### 統合テストの作成
+
+**重要**: 統合テストを作成する際は、API層の`Program.cs`でTest環境の設定を正しく行う必要があります。
+
+**API層のProgram.cs設定（必須）**:
+
+Test環境では、テストコードで独自のDbContextやモックサービスを設定するため、`AddInfrastructure()`の呼び出しをスキップする必要があります。
+
+```csharp
+// Program.cs
+builder.Services.AddOpenApi();
+
+// Test環境ではテストコードでDbContextを設定するためスキップ
+if (!builder.Environment.IsEnvironment("Test"))
+{
+    var connectionString = builder.Configuration.GetConnectionString("YourServiceDb")
+        ?? "Data Source=yourservice.db";
+
+    // Infrastructure層のサービスを追加
+    builder.Services.AddInfrastructure(connectionString);
+
+    // Redis接続の追加
+    builder.AddRedisClient("redis");
+}
+```
+
+**統合テスト例**:
+
+```csharp
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+public class YourApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _baseFactory;
+
+    public YourApiIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _baseFactory = factory;
+    }
+
+    private HttpClient CreateClient()
+    {
+        var dbName = $"TestDb_{Guid.NewGuid()}";
+
+        var client = _baseFactory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Test");
+
+            builder.ConfigureServices(services =>
+            {
+                // Add in-memory database for testing
+                services.AddDbContext<YourDbContext>(options =>
+                {
+                    options.UseInMemoryDatabase(dbName);
+                });
+
+                // Register repositories
+                services.AddScoped<IYourRepository, YourRepository>();
+
+                // Mock external services if needed
+                services.AddScoped<IEventPublisher, MockEventPublisher>();
+            });
+        }).CreateClient();
+
+        return client;
+    }
+
+    [Fact]
+    public async Task PostEndpoint_WithValidData_ShouldReturn201()
+    {
+        // Arrange
+        var client = CreateClient();
+        var request = new CreateRequest { Name = "Test" };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/endpoint", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<ResponseDto>();
+        Assert.NotNull(result);
+        Assert.Equal("Test", result.Name);
+    }
+}
+```
+
+**Program.cs をテストからアクセス可能にする**:
+
+`Program.cs`の最後に以下を追加：
+
+```csharp
+app.Run();
+
+// Make Program class accessible for integration tests
+public partial class Program { }
+```
+
 ### テストの実行
 
 ```bash
@@ -285,6 +389,9 @@ dotnet test
 
 # 特定のプロジェクトのテストを実行
 dotnet test tests/EmployeeService.Domain.Tests
+
+# 統合テストのみ実行
+dotnet test tests/YourService.Integration.Tests
 
 # カバレッジレポート付き（要coverlet.collector）
 dotnet test /p:CollectCoverage=true
