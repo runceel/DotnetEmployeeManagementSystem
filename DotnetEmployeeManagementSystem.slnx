@@ -1,0 +1,66 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Services/" />
+  <Folder Name="/Services/AuthService/" />
+  <Folder Name="/Services/AuthService/Application/">
+    <Project Path="src/Services/AuthService/Application/AuthService.Application.csproj" />
+  </Folder>
+  <Folder Name="/Services/AuthService/Domain/">
+    <Project Path="src/Services/AuthService/Domain/AuthService.Domain.csproj" />
+  </Folder>
+  <Folder Name="/Services/AuthService/Infrastructure/">
+    <Project Path="src/Services/AuthService/Infrastructure/AuthService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/AppHost/AppHost.csproj" />
+    <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/AuthService/" />
+  <Folder Name="/src/Services/AuthService/API/">
+    <Project Path="src/Services/AuthService/API/AuthService.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/EmployeeService/" />
+  <Folder Name="/src/Services/EmployeeService/API/">
+    <Project Path="src/Services/EmployeeService/API/EmployeeService.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/EmployeeService/Application/">
+    <Project Path="src/Services/EmployeeService/Application/EmployeeService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/EmployeeService/Domain/">
+    <Project Path="src/Services/EmployeeService/Domain/EmployeeService.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/EmployeeService/Infrastructure/">
+    <Project Path="src/Services/EmployeeService/Infrastructure/EmployeeService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/NotificationService/" />
+  <Folder Name="/src/Services/NotificationService/API/">
+    <Project Path="src/Services/NotificationService/API/NotificationService.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/NotificationService/Application/">
+    <Project Path="src/Services/NotificationService/Application/NotificationService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/NotificationService/Domain/">
+    <Project Path="src/Services/NotificationService/Domain/NotificationService.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/NotificationService/Infrastructure/">
+    <Project Path="src/Services/NotificationService/Infrastructure/NotificationService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/" />
+  <Folder Name="/src/Shared/Contracts/">
+    <Project Path="src/Shared/Contracts/Shared.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/WebApps/">
+    <Project Path="src/WebApps/BlazorWeb/BlazorWeb.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AuthService.Tests/AuthService.Tests.csproj" />
+    <Project Path="tests/EmployeeService.Application.Tests/EmployeeService.Application.Tests.csproj" />
+    <Project Path="tests/EmployeeService.Domain.Tests/EmployeeService.Domain.Tests.csproj" />
+    <Project Path="tests/EmployeeService.Integration.Tests/EmployeeService.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

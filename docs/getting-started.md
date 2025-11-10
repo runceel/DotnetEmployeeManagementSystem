@@ -120,7 +120,7 @@ dotnet run --project src/WebApps/BlazorWeb
 
 ## Visual Studioでの実行
 
-1. `DotnetEmployeeManagementSystem.sln` を開く
+1. `DotnetEmployeeManagementSystem.slnx` を開く
 2. スタートアッププロジェクトを `AppHost` に設定
 3. F5キーを押すか、デバッグ > デバッグの開始
 4. Aspireダッシュボードが自動的に開きます
