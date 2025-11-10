@@ -11,14 +11,17 @@ var notificationDb = builder.AddSqlite("notificationdb");
 // Add services with database references
 var employeeServiceApi = builder.AddProject<Projects.EmployeeService_API>("employeeservice-api")
     .WithReference(employeeDb)
-    .WithReference(redis);
+    .WithReference(redis)
+    .WithHttpHealthCheck("/health");
 
 var authServiceApi = builder.AddProject<Projects.AuthService_API>("authservice-api")
-    .WithReference(authDb);
+    .WithReference(authDb)
+    .WithHttpHealthCheck("/health");
 
 var notificationServiceApi = builder.AddProject<Projects.NotificationService_API>("notificationservice-api")
     .WithReference(notificationDb)
-    .WithReference(redis);
+    .WithReference(redis)
+    .WithHttpHealthCheck("/health");
 
 // Add Blazor web app with service references
 builder.AddProject<Projects.BlazorWeb>("blazorweb")
