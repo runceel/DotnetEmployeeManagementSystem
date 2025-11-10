@@ -4,17 +4,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/Services/" />
-  <Folder Name="/Services/AuthService/" />
-  <Folder Name="/Services/AuthService/Application/">
-    <Project Path="src/Services/AuthService/Application/AuthService.Application.csproj" />
-  </Folder>
-  <Folder Name="/Services/AuthService/Domain/">
-    <Project Path="src/Services/AuthService/Domain/AuthService.Domain.csproj" />
-  </Folder>
-  <Folder Name="/Services/AuthService/Infrastructure/">
-    <Project Path="src/Services/AuthService/Infrastructure/AuthService.Infrastructure.csproj" />
-  </Folder>
   <Folder Name="/src/">
     <Project Path="src/AppHost/AppHost.csproj" />
     <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
@@ -23,6 +12,15 @@
   <Folder Name="/src/Services/AuthService/" />
   <Folder Name="/src/Services/AuthService/API/">
     <Project Path="src/Services/AuthService/API/AuthService.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/AuthService/Application/">
+    <Project Path="src/Services/AuthService/Application/AuthService.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/AuthService/Domain/">
+    <Project Path="src/Services/AuthService/Domain/AuthService.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/AuthService/Infrastructure/">
+    <Project Path="src/Services/AuthService/Infrastructure/AuthService.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Services/EmployeeService/" />
   <Folder Name="/src/Services/EmployeeService/API/">
