@@ -2,6 +2,7 @@ using AttendanceService.Application.Services;
 using AttendanceService.Domain.Enums;
 using AttendanceService.Domain.Repositories;
 using AttendanceService.Infrastructure;
+using AttendanceService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.AttendanceService;
 
@@ -29,6 +30,12 @@ if (!builder.Environment.IsEnvironment("Test"))
 }
 
 var app = builder.Build();
+
+// データベース初期化 (Test環境では実行しない)
+if (!app.Environment.IsEnvironment("Test"))
+{
+    await DbInitializer.InitializeAsync(app.Services);
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
