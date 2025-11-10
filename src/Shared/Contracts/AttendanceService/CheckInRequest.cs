@@ -5,5 +5,6 @@ namespace Shared.Contracts.AttendanceService;
 /// </summary>
 public record CheckInRequest
 {
+    public Guid EmployeeId { get; init; }
     public DateTime CheckInTime { get; init; }
 }

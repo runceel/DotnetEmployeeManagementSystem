@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
         services.AddScoped<IEventPublisher, RedisEventPublisher>();
+        services.AddScoped<Application.Services.IAttendanceService, Application.Services.AttendanceService>();
 
         return services;
     }
