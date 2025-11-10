@@ -46,6 +46,10 @@ public class AttendanceApiIntegrationTests : IClassFixture<WebApplicationFactory
                 services.AddScoped<AttendanceService.Application.Services.IAttendanceService,
                     AttendanceService.Application.Services.AttendanceService>();
 
+                // Register domain services
+                services.AddScoped<AttendanceService.Domain.Services.IAttendanceAnomalyDetector,
+                    AttendanceService.Domain.Services.AttendanceAnomalyDetector>();
+
                 // Mock event publisher
                 services.AddScoped<AttendanceService.Application.Services.IEventPublisher, MockEventPublisher>();
             });
