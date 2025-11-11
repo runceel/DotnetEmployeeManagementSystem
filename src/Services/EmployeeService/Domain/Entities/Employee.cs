@@ -31,9 +31,14 @@ public class Employee
     public DateTime HireDate { get; private set; }
 
     /// <summary>
-    /// 部署
+    /// 部署ID（外部キー）
     /// </summary>
-    public string Department { get; private set; }
+    public Guid DepartmentId { get; private set; }
+
+    /// <summary>
+    /// 部署（ナビゲーションプロパティ）
+    /// </summary>
+    public Department? Department { get; private set; }
 
     /// <summary>
     /// 役職
@@ -55,18 +60,17 @@ public class Employee
         FirstName = string.Empty;
         LastName = string.Empty;
         Email = string.Empty;
-        Department = string.Empty;
         Position = string.Empty;
     }
 
-    public Employee(string firstName, string lastName, string email, DateTime hireDate, string department, string position)
+    public Employee(string firstName, string lastName, string email, DateTime hireDate, Guid departmentId, string position)
     {
         Id = Guid.NewGuid();
         FirstName = firstName ?? throw new ArgumentNullException(nameof(firstName));
         LastName = lastName ?? throw new ArgumentNullException(nameof(lastName));
         Email = email ?? throw new ArgumentNullException(nameof(email));
         HireDate = hireDate;
-        Department = department ?? throw new ArgumentNullException(nameof(department));
+        DepartmentId = departmentId;
         Position = position ?? throw new ArgumentNullException(nameof(position));
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
@@ -74,13 +78,13 @@ public class Employee
         ValidateEmployee();
     }
 
-    public void Update(string firstName, string lastName, string email, DateTime hireDate, string department, string position)
+    public void Update(string firstName, string lastName, string email, DateTime hireDate, Guid departmentId, string position)
     {
         FirstName = firstName ?? throw new ArgumentNullException(nameof(firstName));
         LastName = lastName ?? throw new ArgumentNullException(nameof(lastName));
         Email = email ?? throw new ArgumentNullException(nameof(email));
         HireDate = hireDate;
-        Department = department ?? throw new ArgumentNullException(nameof(department));
+        DepartmentId = departmentId;
         Position = position ?? throw new ArgumentNullException(nameof(position));
         UpdatedAt = DateTime.UtcNow;
 
@@ -104,8 +108,8 @@ public class Employee
         if (HireDate > DateTime.UtcNow)
             throw new ArgumentException("入社日は現在より前の日付を指定してください。", nameof(HireDate));
 
-        if (string.IsNullOrWhiteSpace(Department))
-            throw new ArgumentException("部署を入力してください。", nameof(Department));
+        if (DepartmentId == Guid.Empty)
+            throw new ArgumentException("部署を指定してください。", nameof(DepartmentId));
 
         if (string.IsNullOrWhiteSpace(Position))
             throw new ArgumentException("役職を入力してください。", nameof(Position));

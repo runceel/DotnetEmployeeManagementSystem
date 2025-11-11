@@ -60,7 +60,14 @@ public class DepartmentRepository : IDepartmentRepository
 
     public async Task<bool> HasEmployeesAsync(string departmentName, CancellationToken cancellationToken = default)
     {
+        // 部署名から部署IDを取得してチェック
+        var department = await _context.Departments
+            .FirstOrDefaultAsync(d => d.Name == departmentName, cancellationToken);
+        
+        if (department == null)
+            return false;
+            
         return await _context.Employees
-            .AnyAsync(e => e.Department == departmentName, cancellationToken);
+            .AnyAsync(e => e.DepartmentId == department.Id, cancellationToken);
     }
 }

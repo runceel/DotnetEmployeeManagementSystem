@@ -30,6 +30,11 @@ public class Department
     /// </summary>
     public DateTime UpdatedAt { get; private set; }
 
+    /// <summary>
+    /// この部署に所属する従業員のコレクション
+    /// </summary>
+    public ICollection<Employee> Employees { get; private set; } = new List<Employee>();
+
     private Department()
     {
         Name = string.Empty;

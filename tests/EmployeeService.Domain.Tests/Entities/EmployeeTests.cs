@@ -4,6 +4,8 @@ namespace EmployeeService.Domain.Tests.Entities;
 
 public class EmployeeTests
 {
+    private static readonly Guid TestDepartmentId = Guid.NewGuid();
+
     [Fact]
     public void Constructor_WithValidParameters_ShouldCreateEmployee()
     {
@@ -12,11 +14,11 @@ public class EmployeeTests
         var lastName = "山田";
         var email = "yamada.taro@example.com";
         var hireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var department = "開発部";
+        var departmentId = TestDepartmentId;
         var position = "エンジニア";
 
         // Act
-        var employee = new Employee(firstName, lastName, email, hireDate, department, position);
+        var employee = new Employee(firstName, lastName, email, hireDate, departmentId, position);
 
         // Assert
         Assert.NotEqual(Guid.Empty, employee.Id);
@@ -24,7 +26,7 @@ public class EmployeeTests
         Assert.Equal(lastName, employee.LastName);
         Assert.Equal(email, employee.Email);
         Assert.Equal(hireDate, employee.HireDate);
-        Assert.Equal(department, employee.Department);
+        Assert.Equal(departmentId, employee.DepartmentId);
         Assert.Equal(position, employee.Position);
         Assert.True(employee.CreatedAt <= DateTime.UtcNow);
         Assert.True(employee.UpdatedAt <= DateTime.UtcNow);
@@ -38,7 +40,7 @@ public class EmployeeTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => 
-            new Employee(null!, "山田", "test@example.com", hireDate, "開発部", "エンジニア"));
+            new Employee(null!, "山田", "test@example.com", hireDate, TestDepartmentId, "エンジニア"));
     }
 
     [Fact]
@@ -49,7 +51,7 @@ public class EmployeeTests
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => 
-            new Employee("", "山田", "test@example.com", hireDate, "開発部", "エンジニア"));
+            new Employee("", "山田", "test@example.com", hireDate, TestDepartmentId, "エンジニア"));
     }
 
     [Fact]
@@ -60,7 +62,7 @@ public class EmployeeTests
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => 
-            new Employee("太郎", "山田", "invalid-email", hireDate, "開発部", "エンジニア"));
+            new Employee("太郎", "山田", "invalid-email", hireDate, TestDepartmentId, "エンジニア"));
     }
 
     [Fact]
@@ -71,7 +73,7 @@ public class EmployeeTests
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => 
-            new Employee("太郎", "山田", "test@example.com", futureDate, "開発部", "エンジニア"));
+            new Employee("太郎", "山田", "test@example.com", futureDate, TestDepartmentId, "エンジニア"));
     }
 
     [Fact]
@@ -79,17 +81,18 @@ public class EmployeeTests
     {
         // Arrange
         var hireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", hireDate, "開発部", "エンジニア");
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", hireDate, TestDepartmentId, "エンジニア");
         var originalUpdatedAt = employee.UpdatedAt;
+        var newDepartmentId = Guid.NewGuid();
 
         // Act
-        employee.Update("次郎", "田中", "tanaka.jiro@example.com", hireDate, "営業部", "マネージャー");
+        employee.Update("次郎", "田中", "tanaka.jiro@example.com", hireDate, newDepartmentId, "マネージャー");
 
         // Assert
         Assert.Equal("次郎", employee.FirstName);
         Assert.Equal("田中", employee.LastName);
         Assert.Equal("tanaka.jiro@example.com", employee.Email);
-        Assert.Equal("営業部", employee.Department);
+        Assert.Equal(newDepartmentId, employee.DepartmentId);
         Assert.Equal("マネージャー", employee.Position);
         Assert.True(employee.UpdatedAt >= originalUpdatedAt);
     }
@@ -99,11 +102,11 @@ public class EmployeeTests
     {
         // Arrange
         var hireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", hireDate, "開発部", "エンジニア");
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", hireDate, TestDepartmentId, "エンジニア");
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => 
-            employee.Update("次郎", "田中", "invalid-email", hireDate, "営業部", "マネージャー"));
+            employee.Update("次郎", "田中", "invalid-email", hireDate, Guid.NewGuid(), "マネージャー"));
     }
 
     [Fact]
@@ -111,7 +114,7 @@ public class EmployeeTests
     {
         // Arrange
         var hireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", hireDate, "開発部", "エンジニア");
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", hireDate, TestDepartmentId, "エンジニア");
 
         // Act
         var fullName = employee.GetFullName();

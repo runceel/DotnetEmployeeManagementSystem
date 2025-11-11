@@ -27,7 +27,7 @@ public class EmployeeAuthorizationTests : IClassFixture<WebApplicationFactory<Pr
     {
         var dbName = $"TestDb_{Guid.NewGuid()}";
         
-        var client = _baseFactory.WithWebHostBuilder(builder =>
+        var factory = _baseFactory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Test");
 
@@ -55,8 +55,21 @@ public class EmployeeAuthorizationTests : IClassFixture<WebApplicationFactory<Pr
                 
                 services.AddScoped<EmployeeService.Domain.Repositories.IEmployeeRepository, 
                     EmployeeService.Infrastructure.Repositories.EmployeeRepository>();
+                services.AddScoped<EmployeeService.Domain.Repositories.IDepartmentRepository, 
+                    EmployeeService.Infrastructure.Repositories.DepartmentRepository>();
             });
-        }).CreateClient();
+        });
+        
+        // Seed test department
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<EmployeeDbContext>();
+            var dept = new EmployeeService.Domain.Entities.Department("開発部", "ソフトウェア開発を担当する部署");
+            context.Departments.Add(dept);
+            context.SaveChanges();
+        }
+        
+        var client = factory.CreateClient();
 
         // Add JWT Bearer token if authentication info is provided
         if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userName))

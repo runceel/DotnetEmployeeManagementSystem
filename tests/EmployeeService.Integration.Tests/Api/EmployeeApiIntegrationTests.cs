@@ -28,7 +28,7 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Use a unique database name per test to isolate test data
         var dbName = $"TestDb_{Guid.NewGuid()}";
         
-        var client = _baseFactory.WithWebHostBuilder(builder =>
+        var factory = _baseFactory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Test");
 
@@ -56,11 +56,24 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
                     options.UseInMemoryDatabase(dbName);
                 });
                 
-                // Register repository
+                // Register repositories
                 services.AddScoped<EmployeeService.Domain.Repositories.IEmployeeRepository, 
                     EmployeeService.Infrastructure.Repositories.EmployeeRepository>();
+                services.AddScoped<EmployeeService.Domain.Repositories.IDepartmentRepository, 
+                    EmployeeService.Infrastructure.Repositories.DepartmentRepository>();
             });
-        }).CreateClient();
+        });
+        
+        // Seed test department
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<EmployeeDbContext>();
+            var dept = new EmployeeService.Domain.Entities.Department("開発部", "ソフトウェア開発を担当する部署");
+            context.Departments.Add(dept);
+            context.SaveChanges();
+        }
+        
+        var client = factory.CreateClient();
 
         // Add admin JWT Bearer token for create/update tests
         var token = JwtTokenHelper.GenerateToken("admin-test", "admin", "Admin");
