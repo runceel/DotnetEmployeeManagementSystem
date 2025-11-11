@@ -32,7 +32,22 @@ public static class DbInitializer
                 return;
             }
 
-            // サンプルデータを投入
+            // 部署サンプルデータを投入
+            var departments = new[]
+            {
+                new Department("開発部", "ソフトウェア開発を担当する部署"),
+                new Department("営業部", "営業活動を担当する部署"),
+                new Department("人事部", "人事管理を担当する部署"),
+                new Department("マーケティング部", "マーケティング活動を担当する部署"),
+                new Department("総務部", "総務・庶務を担当する部署")
+            };
+
+            await context.Departments.AddRangeAsync(departments);
+            await context.SaveChangesAsync();
+            
+            logger.LogInformation("Database seeded with {Count} departments.", departments.Length);
+
+            // 従業員サンプルデータを投入
             var employees = new[]
             {
                 new Employee(
