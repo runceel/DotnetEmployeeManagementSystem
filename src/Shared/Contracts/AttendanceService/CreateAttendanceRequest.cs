@@ -7,6 +7,8 @@ public record CreateAttendanceRequest
 {
     public Guid EmployeeId { get; init; }
     public DateTime WorkDate { get; init; }
+    public DateTime? CheckInTime { get; init; }
+    public DateTime? CheckOutTime { get; init; }
     public string Type { get; init; } = string.Empty;
     public string? Notes { get; init; }
 }

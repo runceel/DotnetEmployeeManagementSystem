@@ -38,4 +38,33 @@ public interface IAttendanceApiClient
     Task<AttendanceDto> CheckOutAsync(
         CheckOutRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 勤怠記録を取得
+    /// </summary>
+    Task<AttendanceDto> GetAttendanceByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 勤怠記録を作成
+    /// </summary>
+    Task<AttendanceDto> CreateAttendanceAsync(
+        CreateAttendanceRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 勤怠記録を更新
+    /// </summary>
+    Task<AttendanceDto> UpdateAttendanceAsync(
+        Guid id,
+        UpdateAttendanceRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 勤怠記録を削除
+    /// </summary>
+    Task DeleteAttendanceAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
 }

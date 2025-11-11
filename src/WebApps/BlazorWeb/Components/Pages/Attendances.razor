@@ -10,7 +10,15 @@
 <PageTitle>勤怠管理</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">勤怠管理</MudText>
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">勤怠管理</MudText>
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navigation.NavigateTo("/attendance-entry"))">
+            新規入力
+        </MudButton>
+    </div>
 
     @if (_isLoading)
     {
@@ -99,6 +107,7 @@
                 <MudTh>勤務時間</MudTh>
                 <MudTh>種別</MudTh>
                 <MudTh>備考</MudTh>
+                <MudTh Style="width: 120px;">操作</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="日付">@context.WorkDate.ToString("yyyy/MM/dd")</MudTd>
@@ -108,6 +117,20 @@
                 <MudTd DataLabel="勤務時間">@(context.WorkHours?.ToString("F1") ?? "-") 時間</MudTd>
                 <MudTd DataLabel="種別">@GetAttendanceTypeLabel(context.Type)</MudTd>
                 <MudTd DataLabel="備考">@context.Notes</MudTd>
+                <MudTd DataLabel="操作">
+                    <MudTooltip Text="編集">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                       Size="Size.Small" 
+                                       Color="Color.Primary"
+                                       OnClick="@(() => Navigation.NavigateTo($"/attendance-entry/{context.Id}"))" />
+                    </MudTooltip>
+                    <MudTooltip Text="削除">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                       Size="Size.Small" 
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteAttendanceAsync(context.Id))" />
+                    </MudTooltip>
+                </MudTd>
             </RowTemplate>
             <PagerContent>
                 <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
@@ -222,5 +245,19 @@
             "HalfDay" => "半日勤務",
             _ => type
         };
+    }
+
+    private async Task DeleteAttendanceAsync(Guid id)
+    {
+        try
+        {
+            await AttendanceApiClient.DeleteAttendanceAsync(id);
+            Snackbar.Add("勤怠記録を削除しました", Severity.Success);
+            await LoadAttendancesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"削除に失敗しました: {ex.Message}", Severity.Error);
+        }
     }
 }
