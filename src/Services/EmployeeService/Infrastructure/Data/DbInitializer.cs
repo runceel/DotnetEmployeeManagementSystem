@@ -24,11 +24,26 @@ public static class DbInitializer
             // データベースが存在しない場合は作成し、マイグレーションを適用
             await context.Database.MigrateAsync();
             logger.LogInformation("Database migration completed.");
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.Message.Contains("no such table") || ex.Message.Contains("FOREIGN KEY constraint failed"))
+        {
+            // マイグレーションに失敗した場合、データベースを削除して再作成
+            logger.LogWarning(ex, "Database migration failed. Deleting and recreating database...");
+            await context.Database.EnsureDeletedAsync();
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Database recreated and migration completed.");
+        }
 
+        try
+        {
             // データが既に存在する場合はスキップ
-            if (await context.Employees.Take(1).AnyAsync())
+            // 両方のテーブルをチェックして、どちらかにデータがあればスキップ
+            var hasEmployees = await context.Employees.AnyAsync();
+            var hasDepartments = await context.Departments.AnyAsync();
+            
+            if (hasEmployees || hasDepartments)
             {
-                logger.LogInformation("Database already seeded.");
+                logger.LogInformation("Database already seeded. Employees: {HasEmployees}, Departments: {HasDepartments}", hasEmployees, hasDepartments);
                 return;
             }
 
