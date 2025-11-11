@@ -57,4 +57,10 @@ public class DepartmentRepository : IDepartmentRepository
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public async Task<bool> HasEmployeesAsync(string departmentName, CancellationToken cancellationToken = default)
+    {
+        return await _context.Employees
+            .AnyAsync(e => e.Department == departmentName, cancellationToken);
+    }
 }

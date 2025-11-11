@@ -1,0 +1,298 @@
+@page "/departments"
+@using Shared.Contracts.DepartmentService
+@using BlazorWeb.Services
+@using BlazorWeb.Models
+@using BlazorWeb.Components.Dialogs
+@inject IDepartmentApiClient DepartmentApiClient
+@inject AuthStateService AuthStateService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>部署一覧 - 従業員管理システム</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h3">部署一覧</MudText>
+    @if (AuthStateService.IsAdmin)
+    {
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog">
+            部署を追加
+        </MudButton>
+    }
+</div>
+
+@if (AuthStateService.IsAuthenticated)
+{
+    <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="mb-4">
+        ログイン中: @AuthStateService.CurrentUser?.UserName
+    </MudChip>
+}
+else
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        この機能を利用するには<MudLink Href="/login">ログイン</MudLink>することをお勧めします。
+    </MudAlert>
+}
+
+@if (!AuthStateService.IsAdmin)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        部署の追加・編集・削除は管理者のみが実行できます。
+    </MudAlert>
+}
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    <MudText Typo="Typo.body1" Class="mt-2">部署データを読み込み中...</MudText>
+}
+else if (_error)
+{
+    <MudAlert Severity="Severity.Error" Class="my-4">
+        @_errorMessage
+    </MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadDepartments">
+        再試行
+    </MudButton>
+}
+else if (_departments is null || !_departments.Any())
+{
+    <MudAlert Severity="Severity.Info" Class="my-4">
+        部署データが登録されていません。
+    </MudAlert>
+}
+else
+{
+    <MudTable Items="_departments" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true" Class="mt-4">
+        <HeaderContent>
+            <MudTh>部署名</MudTh>
+            <MudTh>部署説明</MudTh>
+            <MudTh>作成日時</MudTh>
+            <MudTh>更新日時</MudTh>
+            @if (AuthStateService.IsAdmin)
+            {
+                <MudTh>アクション</MudTh>
+            }
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="部署名">@context.Name</MudTd>
+            <MudTd DataLabel="部署説明">@context.Description</MudTd>
+            <MudTd DataLabel="作成日時">@context.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</MudTd>
+            <MudTd DataLabel="更新日時">@context.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</MudTd>
+            @if (AuthStateService.IsAdmin)
+            {
+                <MudTd DataLabel="アクション">
+                    <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
+                        <MudButton Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="@(() => OpenEditDialog(context))">
+                            編集
+                        </MudButton>
+                        <MudButton Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   OnClick="@(() => OpenDeleteDialog(context))">
+                            削除
+                        </MudButton>
+                    </MudButtonGroup>
+                </MudTd>
+            }
+        </RowTemplate>
+    </MudTable>
+    
+    <MudText Typo="Typo.body2" Class="mt-4">
+        合計: @_departments.Count() 件
+    </MudText>
+}
+
+@code {
+    private IEnumerable<DepartmentDto>? _departments;
+    private bool _loading = true;
+    private bool _error = false;
+    private string _errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDepartments();
+    }
+
+    private async Task LoadDepartments()
+    {
+        _loading = true;
+        _error = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            _departments = await DepartmentApiClient.GetAllDepartmentsAsync();
+            Snackbar.Add("部署データを正常に読み込みました。", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _error = true;
+            _errorMessage = ex.Message;
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<DepartmentFormDialog>
+        {
+            { x => x.Model, new DepartmentFormModel() }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Small, 
+            FullWidth = true 
+        };
+
+        var dialog = await DialogService.ShowAsync<DepartmentFormDialog>("部署を追加", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is DepartmentFormModel model)
+        {
+            await CreateDepartment(model);
+        }
+    }
+
+    private async Task OpenEditDialog(DepartmentDto department)
+    {
+        var model = new DepartmentFormModel
+        {
+            Name = department.Name,
+            Description = department.Description
+        };
+
+        var parameters = new DialogParameters<DepartmentFormDialog>
+        {
+            { x => x.Model, model }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Small, 
+            FullWidth = true 
+        };
+
+        var dialog = await DialogService.ShowAsync<DepartmentFormDialog>("部署を編集", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is DepartmentFormModel updatedModel)
+        {
+            await UpdateDepartment(department.Id, updatedModel);
+        }
+    }
+
+    private async Task OpenDeleteDialog(DepartmentDto department)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"部署「{department.Name}」を削除してもよろしいですか？" },
+            { "ButtonText", "削除" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.ExtraSmall 
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("部署の削除", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await DeleteDepartment(department.Id);
+        }
+    }
+
+    private async Task CreateDepartment(DepartmentFormModel model)
+    {
+        try
+        {
+            var request = new CreateDepartmentRequest
+            {
+                Name = model.Name,
+                Description = model.Description
+            };
+
+            await DepartmentApiClient.CreateDepartmentAsync(request);
+            Snackbar.Add("部署を追加しました。", Severity.Success);
+            await LoadDepartments();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateDepartment(Guid id, DepartmentFormModel model)
+    {
+        try
+        {
+            var request = new UpdateDepartmentRequest
+            {
+                Name = model.Name,
+                Description = model.Description
+            };
+
+            var result = await DepartmentApiClient.UpdateDepartmentAsync(id, request);
+            if (result is not null)
+            {
+                Snackbar.Add("部署情報を更新しました。", Severity.Success);
+                await LoadDepartments();
+            }
+            else
+            {
+                Snackbar.Add("部署が見つかりませんでした。", Severity.Warning);
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteDepartment(Guid id)
+    {
+        try
+        {
+            var result = await DepartmentApiClient.DeleteDepartmentAsync(id);
+            if (result)
+            {
+                Snackbar.Add("部署を削除しました。", Severity.Success);
+                await LoadDepartments();
+            }
+            else
+            {
+                Snackbar.Add("部署が見つかりませんでした。", Severity.Warning);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+    }
+}

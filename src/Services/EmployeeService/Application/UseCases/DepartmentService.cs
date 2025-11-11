@@ -53,6 +53,17 @@ public class DepartmentService : IDepartmentService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        // 部署を取得
+        var department = await _repository.GetByIdAsync(id, cancellationToken);
+        if (department is null)
+            return false;
+
+        // 従業員が所属している部署は削除できない
+        if (await _repository.HasEmployeesAsync(department.Name, cancellationToken))
+        {
+            throw new InvalidOperationException("従業員が所属している部署は削除できません。");
+        }
+
         return await _repository.DeleteAsync(id, cancellationToken);
     }
 }

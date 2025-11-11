@@ -1,0 +1,63 @@
+@using Shared.Contracts.DepartmentService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_isValid">
+            <MudTextField @bind-Value="_model.Name" 
+                          Label="部署名" 
+                          Required="true" 
+                          RequiredError="部署名を入力してください。"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+            
+            <MudTextField @bind-Value="_model.Description" 
+                          Label="部署説明" 
+                          Required="true" 
+                          RequiredError="部署説明を入力してください。"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="OnCancel">キャンセル</MudButton>
+        <MudButton Color="Color.Primary" OnClick="OnSubmit" Disabled="!_isValid">保存</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "部署情報";
+
+    [Parameter]
+    public DepartmentFormModel Model { get; set; } = new();
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private DepartmentFormModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        _model = new DepartmentFormModel
+        {
+            Name = Model.Name,
+            Description = Model.Description
+        };
+    }
+
+    private void OnSubmit()
+    {
+        MudDialog?.Close(DialogResult.Ok(_model));
+    }
+
+    private void OnCancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

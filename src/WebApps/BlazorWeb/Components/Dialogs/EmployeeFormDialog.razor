@@ -1,4 +1,8 @@
 @using Shared.Contracts.EmployeeService
+@using Shared.Contracts.DepartmentService
+@using BlazorWeb.Services
+@inject IDepartmentApiClient DepartmentApiClient
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <TitleContent>
@@ -28,12 +32,20 @@
                           Variant="Variant.Outlined"
                           Class="mb-3" />
             
-            <MudTextField @bind-Value="_model.Department" 
-                          Label="部署" 
-                          Required="true" 
-                          RequiredError="部署を入力してください。"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
+            <MudSelect @bind-Value="_model.Department" 
+                       Label="部署" 
+                       Required="true" 
+                       RequiredError="部署を選択してください。"
+                       Variant="Variant.Outlined"
+                       Class="mb-3">
+                @if (_departments is not null)
+                {
+                    @foreach (var dept in _departments)
+                    {
+                        <MudSelectItem Value="@dept.Name">@dept.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
             
             <MudTextField @bind-Value="_model.Position" 
                           Label="役職" 
@@ -70,8 +82,9 @@
     private bool _isValid;
     private EmployeeFormModel _model = new();
     private DateTime? _hireDate;
+    private IEnumerable<DepartmentDto>? _departments;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _model = new EmployeeFormModel
         {
@@ -83,6 +96,21 @@
             HireDate = Model.HireDate
         };
         _hireDate = _model.HireDate;
+
+        await LoadDepartments();
+    }
+
+    private async Task LoadDepartments()
+    {
+        try
+        {
+            _departments = await DepartmentApiClient.GetAllDepartmentsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"部署一覧の取得に失敗しました: {ex.Message}", Severity.Error);
+            _departments = Enumerable.Empty<DepartmentDto>();
+        }
     }
 
     private void OnSubmit()
