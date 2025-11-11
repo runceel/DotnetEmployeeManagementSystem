@@ -277,12 +277,20 @@ departments.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateDepartmentRequ
 // 部署を削除
 departments.MapDelete("/{id:guid}", async (Guid id, IDepartmentService departmentService) =>
 {
-    var result = await departmentService.DeleteAsync(id);
-    return result ? Results.NoContent() : Results.NotFound();
+    try
+    {
+        var result = await departmentService.DeleteAsync(id);
+        return result ? Results.NoContent() : Results.NotFound();
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 })
 .WithName("DeleteDepartment")
 .Produces(StatusCodes.Status204NoContent)
 .Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status400BadRequest)
 .RequireAuthorization("AdminPolicy");
 
 app.Run();

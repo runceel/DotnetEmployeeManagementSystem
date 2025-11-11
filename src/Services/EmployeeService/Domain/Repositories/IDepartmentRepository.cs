@@ -31,4 +31,9 @@ public interface IDepartmentRepository
     /// 部署を削除
     /// </summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 部署に所属する従業員が存在するか確認
+    /// </summary>
+    Task<bool> HasEmployeesAsync(string departmentName, CancellationToken cancellationToken = default);
 }

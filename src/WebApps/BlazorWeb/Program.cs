@@ -17,6 +17,13 @@ builder.Services.AddHttpClient<IEmployeeApiClient, EmployeeApiClient>("employees
     client.BaseAddress = new Uri("http://employeeservice-api");
 });
 
+// Add HttpClient for DepartmentService with Aspire service discovery
+builder.Services.AddHttpClient<IDepartmentApiClient, DepartmentApiClient>("employeeservice-api", client =>
+{
+    // Service discovery will resolve this to the actual endpoint (same as EmployeeService)
+    client.BaseAddress = new Uri("http://employeeservice-api");
+});
+
 // Add HttpClient for AuthService with Aspire service discovery
 builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>("authservice-api", client =>
 {
