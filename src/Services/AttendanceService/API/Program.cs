@@ -219,25 +219,250 @@ attendances.MapGet("/", () =>
 .Produces<IEnumerable<AttendanceDto>>();
 
 // IDで勤怠記録を取得
-attendances.MapGet("/{id:guid}", (Guid id) =>
+attendances.MapGet("/{id:guid}", async (
+    Guid id,
+    [FromServices] IAttendanceRepository attendanceRepository,
+    [FromServices] ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
 {
-    return Results.NotFound();
+    try
+    {
+        var attendance = await attendanceRepository.GetByIdAsync(id, cancellationToken);
+        if (attendance == null)
+        {
+            return Results.NotFound(new { error = "勤怠記録が見つかりません。" });
+        }
+
+        var dto = new AttendanceDto
+        {
+            Id = attendance.Id,
+            EmployeeId = attendance.EmployeeId,
+            WorkDate = attendance.WorkDate,
+            CheckInTime = attendance.CheckInTime,
+            CheckOutTime = attendance.CheckOutTime,
+            Type = attendance.Type.ToString(),
+            Notes = attendance.Notes,
+            WorkHours = attendance.CalculateWorkHours(),
+            CreatedAt = attendance.CreatedAt,
+            UpdatedAt = attendance.UpdatedAt
+        };
+
+        return Results.Ok(dto);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "勤怠記録 {AttendanceId} の取得中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
 })
 .WithName("GetAttendanceById")
 .WithSummary("IDで勤怠記録を取得")
-.WithDescription("指定されたIDの勤怠記録を取得します。（実装予定）")
+.WithDescription("指定されたIDの勤怠記録を取得します。")
 .Produces<AttendanceDto>()
 .Produces(StatusCodes.Status404NotFound);
 
 // 勤怠記録を作成
-attendances.MapPost("/", ([FromBody] CreateAttendanceRequest request) =>
+attendances.MapPost("/", async (
+    [FromBody] CreateAttendanceRequest request,
+    [FromServices] IAttendanceRepository attendanceRepository,
+    [FromServices] ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
 {
-    return Results.Created($"/api/attendances/{Guid.NewGuid()}", new AttendanceDto());
+    try
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Enum.TryParse<AttendanceType>(request.Type, ignoreCase: true, out var attendanceType))
+        {
+            return Results.BadRequest(new { error = "無効な勤怠種別です。有効な値: Normal, Remote, BusinessTrip, HalfDay" });
+        }
+
+        // 同じ日の勤怠記録が既に存在するかチェック
+        var existingAttendance = await attendanceRepository.GetByEmployeeIdAndDateAsync(
+            request.EmployeeId,
+            request.WorkDate,
+            cancellationToken);
+
+        if (existingAttendance != null)
+        {
+            return Results.BadRequest(new { error = "指定された日付の勤怠記録は既に存在します。" });
+        }
+
+        var attendance = new AttendanceService.Domain.Entities.Attendance(
+            request.EmployeeId,
+            request.WorkDate,
+            attendanceType,
+            request.Notes);
+
+        // 出勤時刻が指定されている場合は記録
+        if (request.CheckInTime.HasValue)
+        {
+            attendance.CheckIn(request.CheckInTime.Value);
+        }
+
+        // 退勤時刻が指定されている場合は記録
+        if (request.CheckOutTime.HasValue)
+        {
+            if (!request.CheckInTime.HasValue)
+            {
+                return Results.BadRequest(new { error = "退勤時刻を記録するには出勤時刻が必要です。" });
+            }
+            attendance.CheckOut(request.CheckOutTime.Value);
+        }
+
+        var result = await attendanceRepository.AddAsync(attendance, cancellationToken);
+
+        var dto = new AttendanceDto
+        {
+            Id = result.Id,
+            EmployeeId = result.EmployeeId,
+            WorkDate = result.WorkDate,
+            CheckInTime = result.CheckInTime,
+            CheckOutTime = result.CheckOutTime,
+            Type = result.Type.ToString(),
+            Notes = result.Notes,
+            WorkHours = result.CalculateWorkHours(),
+            CreatedAt = result.CreatedAt,
+            UpdatedAt = result.UpdatedAt
+        };
+
+        return Results.Created($"/api/attendances/{dto.Id}", dto);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "勤怠記録の作成中にエラーが発生しました");
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
 })
 .WithName("CreateAttendance")
 .WithSummary("勤怠記録を作成")
-.WithDescription("新しい勤怠記録を作成します。（実装予定）")
+.WithDescription("""
+    新しい勤怠記録を作成します。
+    
+    **勤怠種別:**
+    - Normal: 通常勤務
+    - Remote: リモートワーク
+    - BusinessTrip: 出張
+    - HalfDay: 半日勤務
+    
+    **バリデーション:**
+    - 従業員IDは有効なGUIDである必要があります
+    - 同じ日付の勤怠記録が既に存在する場合はエラーを返します
+    - 勤務日は現在または過去の日付である必要があります
+    """)
 .Produces<AttendanceDto>(StatusCodes.Status201Created)
+.Produces(StatusCodes.Status400BadRequest);
+
+// 勤怠記録を更新
+attendances.MapPut("/{id:guid}", async (
+    Guid id,
+    [FromBody] UpdateAttendanceRequest request,
+    [FromServices] IAttendanceRepository attendanceRepository,
+    [FromServices] ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var attendance = await attendanceRepository.GetByIdAsync(id, cancellationToken);
+        if (attendance == null)
+        {
+            return Results.NotFound(new { error = "勤怠記録が見つかりません。" });
+        }
+
+        if (!Enum.TryParse<AttendanceType>(request.Type, ignoreCase: true, out var attendanceType))
+        {
+            return Results.BadRequest(new { error = "無効な勤怠種別です。有効な値: Normal, Remote, BusinessTrip, HalfDay" });
+        }
+
+        attendance.Update(attendanceType, request.Notes);
+        await attendanceRepository.UpdateAsync(attendance, cancellationToken);
+
+        var dto = new AttendanceDto
+        {
+            Id = attendance.Id,
+            EmployeeId = attendance.EmployeeId,
+            WorkDate = attendance.WorkDate,
+            CheckInTime = attendance.CheckInTime,
+            CheckOutTime = attendance.CheckOutTime,
+            Type = attendance.Type.ToString(),
+            Notes = attendance.Notes,
+            WorkHours = attendance.CalculateWorkHours(),
+            CreatedAt = attendance.CreatedAt,
+            UpdatedAt = attendance.UpdatedAt
+        };
+
+        return Results.Ok(dto);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "勤怠記録 {AttendanceId} の更新中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
+})
+.WithName("UpdateAttendance")
+.WithSummary("勤怠記録を更新")
+.WithDescription("""
+    既存の勤怠記録を更新します。
+    
+    **更新可能な項目:**
+    - 勤怠種別 (Type)
+    - 備考 (Notes)
+    
+    **注意:**
+    - 出勤時刻・退勤時刻は更新できません
+    - 従業員IDや勤務日は変更できません
+    """)
+.Produces<AttendanceDto>()
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status400BadRequest);
+
+// 勤怠記録を削除
+attendances.MapDelete("/{id:guid}", async (
+    Guid id,
+    [FromServices] IAttendanceRepository attendanceRepository,
+    [FromServices] ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var attendance = await attendanceRepository.GetByIdAsync(id, cancellationToken);
+        if (attendance == null)
+        {
+            return Results.NotFound(new { error = "勤怠記録が見つかりません。" });
+        }
+
+        await attendanceRepository.DeleteAsync(id, cancellationToken);
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "勤怠記録 {AttendanceId} の削除中にエラーが発生しました", id);
+        return Results.BadRequest(new { error = ex.Message, traceId = Guid.NewGuid().ToString() });
+    }
+})
+.WithName("DeleteAttendance")
+.WithSummary("勤怠記録を削除")
+.WithDescription("指定されたIDの勤怠記録を削除します。")
+.Produces(StatusCodes.Status204NoContent)
+.Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status400BadRequest);
 
 // 出勤を記録

@@ -1,0 +1,257 @@
+@page "/attendance-entry"
+@page "/attendance-entry/{Id:guid}"
+@using Shared.Contracts.AttendanceService
+@using Shared.Contracts.EmployeeService
+@using BlazorWeb.Services
+@inject IAttendanceApiClient AttendanceApiClient
+@inject IEmployeeApiClient EmployeeApiClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@(_isEditMode ? "勤怠記録編集" : "勤怠記録入力")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">@(_isEditMode ? "勤怠記録編集" : "勤怠記録入力")</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="Guid" 
+                                       Label="従業員" 
+                                       @bind-Value="_employeeId" 
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       RequiredError="従業員を選択してください"
+                                       Disabled="_isEditMode">
+                                @foreach (var employee in _employees)
+                                {
+                                    <MudSelectItem T="Guid" Value="@employee.Id">@employee.LastName @employee.FirstName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker Label="勤務日" 
+                                           @bind-Date="_workDate" 
+                                           Variant="Variant.Outlined"
+                                           Required="true"
+                                           RequiredError="勤務日を入力してください"
+                                           MaxDate="DateTime.Today"
+                                           Disabled="_isEditMode" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTimePicker Label="出勤時刻" 
+                                           @bind-Time="_checkInTime" 
+                                           Variant="Variant.Outlined"
+                                           AmPm="false" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTimePicker Label="退勤時刻" 
+                                           @bind-Time="_checkOutTime" 
+                                           Variant="Variant.Outlined"
+                                           AmPm="false" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string" 
+                                       Label="勤怠種別" 
+                                       @bind-Value="_attendanceType" 
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       RequiredError="勤怠種別を選択してください">
+                                <MudSelectItem T="string" Value="@("Normal")">通常勤務</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Remote")">リモート</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("BusinessTrip")">出張</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("HalfDay")">半日勤務</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField T="string" 
+                                          Label="備考" 
+                                          @bind-Value="_notes" 
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          MaxLength="500" />
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           OnClick="SaveAsync" 
+                           Disabled="!_isValid || _isSaving">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    }
+                    保存
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Default" 
+                           OnClick="Cancel">
+                    キャンセル
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _isEditMode => Id.HasValue;
+
+    private List<EmployeeDto> _employees = new();
+    private Guid _employeeId;
+    private DateTime? _workDate = DateTime.Today;
+    private TimeSpan? _checkInTime;
+    private TimeSpan? _checkOutTime;
+    private string _attendanceType = "Normal";
+    private string? _notes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployeesAsync();
+        
+        if (_isEditMode && Id.HasValue)
+        {
+            await LoadAttendanceAsync(Id.Value);
+        }
+        
+        _isLoading = false;
+    }
+
+    private async Task LoadEmployeesAsync()
+    {
+        try
+        {
+            var employees = await EmployeeApiClient.GetAllEmployeesAsync();
+            _employees = employees.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"従業員一覧の取得に失敗しました: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadAttendanceAsync(Guid id)
+    {
+        try
+        {
+            var attendance = await AttendanceApiClient.GetAttendanceByIdAsync(id);
+            _employeeId = attendance.EmployeeId;
+            _workDate = attendance.WorkDate;
+            _checkInTime = attendance.CheckInTime?.TimeOfDay;
+            _checkOutTime = attendance.CheckOutTime?.TimeOfDay;
+            _attendanceType = attendance.Type;
+            _notes = attendance.Notes;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"勤怠記録の取得に失敗しました: {ex.Message}", Severity.Error);
+            Navigation.NavigateTo("/attendances");
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_isValid)
+            {
+                Snackbar.Add("入力内容を確認してください", Severity.Warning);
+                return;
+            }
+        }
+
+        if (_employeeId == Guid.Empty)
+        {
+            Snackbar.Add("従業員を選択してください", Severity.Warning);
+            return;
+        }
+
+        if (!_workDate.HasValue)
+        {
+            Snackbar.Add("勤務日を入力してください", Severity.Warning);
+            return;
+        }
+
+        // 退勤時刻が入力されているのに出勤時刻が未入力の場合はエラー
+        if (_checkOutTime.HasValue && !_checkInTime.HasValue)
+        {
+            Snackbar.Add("退勤時刻を記録するには出勤時刻が必要です", Severity.Warning);
+            return;
+        }
+
+        // 出勤時刻より退勤時刻が前の場合はエラー
+        if (_checkInTime.HasValue && _checkOutTime.HasValue && _checkOutTime.Value <= _checkInTime.Value)
+        {
+            Snackbar.Add("退勤時刻は出勤時刻より後である必要があります", Severity.Warning);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            if (_isEditMode && Id.HasValue)
+            {
+                // 更新
+                var request = new UpdateAttendanceRequest
+                {
+                    Type = _attendanceType,
+                    Notes = _notes
+                };
+                await AttendanceApiClient.UpdateAttendanceAsync(Id.Value, request);
+                Snackbar.Add("勤怠記録を更新しました", Severity.Success);
+            }
+            else
+            {
+                // 新規作成
+                var request = new CreateAttendanceRequest
+                {
+                    EmployeeId = _employeeId,
+                    WorkDate = _workDate.Value,
+                    CheckInTime = _checkInTime.HasValue ? _workDate.Value.Date.Add(_checkInTime.Value) : null,
+                    CheckOutTime = _checkOutTime.HasValue ? _workDate.Value.Date.Add(_checkOutTime.Value) : null,
+                    Type = _attendanceType,
+                    Notes = _notes
+                };
+                await AttendanceApiClient.CreateAttendanceAsync(request);
+                Snackbar.Add("勤怠記録を作成しました", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/attendances");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"保存に失敗しました: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/attendances");
+    }
+}

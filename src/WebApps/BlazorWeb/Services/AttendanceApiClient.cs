@@ -220,4 +220,184 @@ public class AttendanceApiClient : IAttendanceApiClient
             throw new InvalidOperationException("退勤記録の登録中に予期しないエラーが発生しました。", ex);
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<AttendanceDto> GetAttendanceByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching attendance {AttendanceId}", id);
+
+            var attendance = await _httpClient.GetFromJsonAsync<AttendanceDto>(
+                $"{ApiBasePath}/{id}",
+                cancellationToken);
+
+            if (attendance is null)
+            {
+                throw new InvalidOperationException("勤怠記録の取得に失敗しました。");
+            }
+
+            _logger.LogInformation("Successfully fetched attendance {AttendanceId}", id);
+            return attendance;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request failed while fetching attendance {AttendanceId}", id);
+            throw new InvalidOperationException("勤怠記録の取得に失敗しました。", ex);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "Unexpected error while fetching attendance {AttendanceId}", id);
+            throw new InvalidOperationException("勤怠記録の取得中に予期しないエラーが発生しました。", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<AttendanceDto> CreateAttendanceAsync(
+        CreateAttendanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Creating attendance for employee {EmployeeId}", request.EmployeeId);
+
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, ApiBasePath)
+            {
+                Content = JsonContent.Create(request)
+            };
+            AddAuthHeaders(httpRequest);
+
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to create attendance. Status: {StatusCode}, Error: {Error}",
+                    response.StatusCode, errorContent);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new UnauthorizedAccessException("この操作を実行する権限がありません。");
+                }
+
+                throw new InvalidOperationException($"勤怠記録の作成に失敗しました。（エラー: {response.StatusCode}）");
+            }
+
+            var attendance = await response.Content.ReadFromJsonAsync<AttendanceDto>(cancellationToken: cancellationToken);
+            if (attendance is null)
+            {
+                throw new InvalidOperationException("勤怠記録の作成は成功しましたが、レスポンスの解析に失敗しました。");
+            }
+
+            _logger.LogInformation("Successfully created attendance for employee {EmployeeId}", request.EmployeeId);
+            return attendance;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request failed while creating attendance for employee {EmployeeId}", request.EmployeeId);
+            throw new InvalidOperationException("勤怠記録の作成に失敗しました。", ex);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException and not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "Unexpected error while creating attendance for employee {EmployeeId}", request.EmployeeId);
+            throw new InvalidOperationException("勤怠記録の作成中に予期しないエラーが発生しました。", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<AttendanceDto> UpdateAttendanceAsync(
+        Guid id,
+        UpdateAttendanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Updating attendance {AttendanceId}", id);
+
+            var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"{ApiBasePath}/{id}")
+            {
+                Content = JsonContent.Create(request)
+            };
+            AddAuthHeaders(httpRequest);
+
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to update attendance. Status: {StatusCode}, Error: {Error}",
+                    response.StatusCode, errorContent);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new UnauthorizedAccessException("この操作を実行する権限がありません。");
+                }
+
+                throw new InvalidOperationException($"勤怠記録の更新に失敗しました。（エラー: {response.StatusCode}）");
+            }
+
+            var attendance = await response.Content.ReadFromJsonAsync<AttendanceDto>(cancellationToken: cancellationToken);
+            if (attendance is null)
+            {
+                throw new InvalidOperationException("勤怠記録の更新は成功しましたが、レスポンスの解析に失敗しました。");
+            }
+
+            _logger.LogInformation("Successfully updated attendance {AttendanceId}", id);
+            return attendance;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request failed while updating attendance {AttendanceId}", id);
+            throw new InvalidOperationException("勤怠記録の更新に失敗しました。", ex);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException and not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "Unexpected error while updating attendance {AttendanceId}", id);
+            throw new InvalidOperationException("勤怠記録の更新中に予期しないエラーが発生しました。", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteAttendanceAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting attendance {AttendanceId}", id);
+
+            var httpRequest = new HttpRequestMessage(HttpMethod.Delete, $"{ApiBasePath}/{id}");
+            AddAuthHeaders(httpRequest);
+
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to delete attendance. Status: {StatusCode}, Error: {Error}",
+                    response.StatusCode, errorContent);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new UnauthorizedAccessException("この操作を実行する権限がありません。");
+                }
+
+                throw new InvalidOperationException($"勤怠記録の削除に失敗しました。（エラー: {response.StatusCode}）");
+            }
+
+            _logger.LogInformation("Successfully deleted attendance {AttendanceId}", id);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request failed while deleting attendance {AttendanceId}", id);
+            throw new InvalidOperationException("勤怠記録の削除に失敗しました。", ex);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException and not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "Unexpected error while deleting attendance {AttendanceId}", id);
+            throw new InvalidOperationException("勤怠記録の削除中に予期しないエラーが発生しました。", ex);
+        }
+    }
 }
