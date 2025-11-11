@@ -152,10 +152,17 @@ public class DepartmentServiceTests
     }
 
     [Fact]
-    public async Task DeleteAsync_WithExistingId_ShouldReturnTrue()
+    public async Task DeleteAsync_WithExistingIdAndNoEmployees_ShouldReturnTrue()
     {
         // Arrange
         var departmentId = Guid.NewGuid();
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+
+        _mockRepository.Setup(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(department);
+
+        _mockRepository.Setup(r => r.HasEmployeesAsync(department.Name, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         _mockRepository.Setup(r => r.DeleteAsync(departmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -165,6 +172,8 @@ public class DepartmentServiceTests
 
         // Assert
         Assert.True(result);
+        _mockRepository.Verify(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.HasEmployeesAsync(department.Name, It.IsAny<CancellationToken>()), Times.Once);
         _mockRepository.Verify(r => r.DeleteAsync(departmentId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -173,14 +182,40 @@ public class DepartmentServiceTests
     {
         // Arrange
         var departmentId = Guid.NewGuid();
-        _mockRepository.Setup(r => r.DeleteAsync(departmentId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        
+        _mockRepository.Setup(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Department?)null);
 
         // Act
         var result = await _service.DeleteAsync(departmentId);
 
         // Assert
         Assert.False(result);
-        _mockRepository.Verify(r => r.DeleteAsync(departmentId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.HasEmployeesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithDepartmentThatHasEmployees_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var departmentId = Guid.NewGuid();
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+
+        _mockRepository.Setup(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(department);
+
+        _mockRepository.Setup(r => r.HasEmployeesAsync(department.Name, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await _service.DeleteAsync(departmentId));
+
+        Assert.Equal("従業員が所属している部署は削除できません。", exception.Message);
+        _mockRepository.Verify(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.HasEmployeesAsync(department.Name, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
