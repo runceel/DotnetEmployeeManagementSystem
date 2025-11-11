@@ -9,9 +9,10 @@ namespace EmployeeService.Application.UseCases;
 /// <summary>
 /// 従業員サービス
 /// </summary>
-public class EmployeeService(IEmployeeRepository repository, IEventPublisher? eventPublisher = null) : IEmployeeService
+public class EmployeeService(IEmployeeRepository repository, IDepartmentRepository departmentRepository, IEventPublisher? eventPublisher = null) : IEmployeeService
 {
     private readonly IEmployeeRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+    private readonly IDepartmentRepository _departmentRepository = departmentRepository ?? throw new ArgumentNullException(nameof(departmentRepository));
     private readonly IEventPublisher? _eventPublisher = eventPublisher;
 
     public async Task<EmployeeDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -36,7 +37,15 @@ public class EmployeeService(IEmployeeRepository repository, IEventPublisher? ev
             throw new InvalidOperationException($"メールアドレス '{request.Email}' は既に使用されています。");
         }
 
-        var employee = request.ToEntity();
+        // 部署名から部署IDを検索
+        var departments = await _departmentRepository.GetAllAsync(cancellationToken);
+        var department = departments.FirstOrDefault(d => d.Name == request.Department);
+        if (department == null)
+        {
+            throw new InvalidOperationException($"部署 '{request.Department}' が見つかりません。");
+        }
+
+        var employee = request.ToEntity(department.Id);
         var created = await _repository.AddAsync(employee, cancellationToken);
 
         // イベントを発行
@@ -48,7 +57,7 @@ public class EmployeeService(IEmployeeRepository repository, IEventPublisher? ev
                 FirstName = created.FirstName,
                 LastName = created.LastName,
                 Email = created.Email,
-                Department = created.Department,
+                Department = department.Name,
                 Position = created.Position,
                 CreatedAt = created.CreatedAt
             };
@@ -74,12 +83,20 @@ public class EmployeeService(IEmployeeRepository repository, IEventPublisher? ev
             throw new InvalidOperationException($"メールアドレス '{request.Email}' は既に使用されています。");
         }
 
+        // 部署名から部署IDを検索
+        var departments = await _departmentRepository.GetAllAsync(cancellationToken);
+        var department = departments.FirstOrDefault(d => d.Name == request.Department);
+        if (department == null)
+        {
+            throw new InvalidOperationException($"部署 '{request.Department}' が見つかりません。");
+        }
+
         employee.Update(
             request.FirstName,
             request.LastName,
             request.Email,
             request.HireDate,
-            request.Department,
+            department.Id,
             request.Position
         );
 
@@ -94,7 +111,7 @@ public class EmployeeService(IEmployeeRepository repository, IEventPublisher? ev
                 FirstName = employee.FirstName,
                 LastName = employee.LastName,
                 Email = employee.Email,
-                Department = employee.Department,
+                Department = department.Name,
                 Position = employee.Position,
                 UpdatedAt = employee.UpdatedAt
             };
@@ -143,8 +160,8 @@ public class EmployeeService(IEmployeeRepository repository, IEventPublisher? ev
 
         // 部署のユニーク数を計算
         var departmentCount = employeeList
-            .Select(e => e.Department)
-            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Select(e => e.DepartmentId)
+            .Where(d => d != Guid.Empty)
             .Distinct()
             .Count();
 

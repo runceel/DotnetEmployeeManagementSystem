@@ -46,16 +46,21 @@ public class EmployeeDbContext : DbContext
             entity.HasIndex(e => e.Email)
                 .IsUnique();
 
-            entity.Property(e => e.Department)
-                .IsRequired()
-                .HasMaxLength(100);
-
             entity.Property(e => e.Position)
                 .IsRequired()
                 .HasMaxLength(100);
 
             entity.Property(e => e.HireDate)
                 .IsRequired();
+
+            entity.Property(e => e.DepartmentId)
+                .IsRequired();
+
+            // 外部キー関係の設定
+            entity.HasOne(e => e.Department)
+                .WithMany(d => d.Employees)
+                .HasForeignKey(e => e.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.Property(e => e.CreatedAt)
                 .IsRequired();

@@ -9,6 +9,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
 {
     private readonly EmployeeDbContext _context;
     private readonly EmployeeRepository _repository;
+    private readonly Guid _testDepartmentId;
 
     public EmployeeRepositoryIntegrationTests()
     {
@@ -18,6 +19,12 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
 
         _context = new EmployeeDbContext(options);
         _repository = new EmployeeRepository(_context);
+        
+        // Add a test department
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+        _context.Departments.Add(department);
+        _context.SaveChanges();
+        _testDepartmentId = department.Id;
     }
 
     public void Dispose()
@@ -36,7 +43,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "山田",
             "yamada.taro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "開発部",
+            _testDepartmentId,
             "エンジニア"
         );
 
@@ -58,7 +65,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "山田",
             "yamada.taro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "開発部",
+            _testDepartmentId,
             "エンジニア"
         );
         await _repository.AddAsync(employee);
@@ -94,7 +101,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "山田",
             "yamada.taro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "開発部",
+            _testDepartmentId,
             "エンジニア"
         );
         var employee2 = new Employee(
@@ -102,7 +109,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "佐藤",
             "sato.hanako@example.com",
             new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc),
-            "営業部",
+            _testDepartmentId,
             "マネージャー"
         );
 
@@ -125,7 +132,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "山田",
             "yamada.taro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "開発部",
+            _testDepartmentId,
             "エンジニア"
         );
         await _repository.AddAsync(employee);
@@ -148,7 +155,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "山田",
             "yamada.taro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "開発部",
+            _testDepartmentId,
             "エンジニア"
         );
         await _repository.AddAsync(employee);
@@ -159,7 +166,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "田中",
             "tanaka.jiro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "営業部",
+            _testDepartmentId,
             "マネージャー"
         );
         await _repository.UpdateAsync(employee);
@@ -181,7 +188,7 @@ public class EmployeeRepositoryIntegrationTests : IDisposable
             "山田",
             "yamada.taro@example.com",
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            "開発部",
+            _testDepartmentId,
             "エンジニア"
         );
         await _repository.AddAsync(employee);

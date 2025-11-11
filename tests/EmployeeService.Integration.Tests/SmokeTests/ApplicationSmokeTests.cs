@@ -32,7 +32,7 @@ public class ApplicationSmokeTests : IClassFixture<WebApplicationFactory<Program
     {
         var dbName = $"SmokeTestDb_{Guid.NewGuid()}";
         
-        var client = _baseFactory.WithWebHostBuilder(builder =>
+        var factory = _baseFactory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Test");
 
@@ -62,7 +62,24 @@ public class ApplicationSmokeTests : IClassFixture<WebApplicationFactory<Program
                 services.AddScoped<EmployeeService.Domain.Repositories.IDepartmentRepository,
                     EmployeeService.Infrastructure.Repositories.DepartmentRepository>();
             });
-        }).CreateClient();
+        });
+        
+        // Seed test departments
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<EmployeeDbContext>();
+            var departments = new[]
+            {
+                new EmployeeService.Domain.Entities.Department("開発部", "ソフトウェア開発を担当する部署"),
+                new EmployeeService.Domain.Entities.Department("営業部", "営業活動を担当する部署"),
+                new EmployeeService.Domain.Entities.Department("人事部", "人事管理を担当する部署"),
+                new EmployeeService.Domain.Entities.Department("総務部", "総務・庶務を担当する部署")
+            };
+            context.Departments.AddRange(departments);
+            context.SaveChanges();
+        }
+        
+        var client = factory.CreateClient();
 
         var token = JwtTokenHelper.GenerateToken("admin-test", "admin", "Admin");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

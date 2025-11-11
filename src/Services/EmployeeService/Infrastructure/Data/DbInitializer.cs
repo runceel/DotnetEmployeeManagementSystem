@@ -32,7 +32,28 @@ public static class DbInitializer
                 return;
             }
 
-            // サンプルデータを投入
+            // 部署サンプルデータを投入
+            var departments = new[]
+            {
+                new Department("開発部", "ソフトウェア開発を担当する部署"),
+                new Department("営業部", "営業活動を担当する部署"),
+                new Department("人事部", "人事管理を担当する部署"),
+                new Department("マーケティング部", "マーケティング活動を担当する部署"),
+                new Department("総務部", "総務・庶務を担当する部署")
+            };
+
+            await context.Departments.AddRangeAsync(departments);
+            await context.SaveChangesAsync();
+            
+            logger.LogInformation("Database seeded with {Count} departments.", departments.Length);
+
+            // 部署IDを取得
+            var devDept = departments[0];       // 開発部
+            var salesDept = departments[1];     // 営業部
+            var hrDept = departments[2];        // 人事部
+            var marketingDept = departments[3]; // マーケティング部
+
+            // 従業員サンプルデータを投入
             var employees = new[]
             {
                 new Employee(
@@ -40,7 +61,7 @@ public static class DbInitializer
                     "山田",
                     "yamada.taro@example.com",
                     new DateTime(2020, 4, 1, 0, 0, 0, DateTimeKind.Utc),
-                    "開発部",
+                    devDept.Id,
                     "シニアエンジニア"
                 ),
                 new Employee(
@@ -48,7 +69,7 @@ public static class DbInitializer
                     "佐藤",
                     "sato.hanako@example.com",
                     new DateTime(2019, 7, 15, 0, 0, 0, DateTimeKind.Utc),
-                    "営業部",
+                    salesDept.Id,
                     "マネージャー"
                 ),
                 new Employee(
@@ -56,7 +77,7 @@ public static class DbInitializer
                     "田中",
                     "tanaka.jiro@example.com",
                     new DateTime(2021, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-                    "開発部",
+                    devDept.Id,
                     "ジュニアエンジニア"
                 ),
                 new Employee(
@@ -64,7 +85,7 @@ public static class DbInitializer
                     "鈴木",
                     "suzuki.misaki@example.com",
                     new DateTime(2018, 3, 1, 0, 0, 0, DateTimeKind.Utc),
-                    "人事部",
+                    hrDept.Id,
                     "ディレクター"
                 ),
                 new Employee(
@@ -72,7 +93,7 @@ public static class DbInitializer
                     "高橋",
                     "takahashi.kenta@example.com",
                     new DateTime(2022, 1, 15, 0, 0, 0, DateTimeKind.Utc),
-                    "マーケティング部",
+                    marketingDept.Id,
                     "アシスタント"
                 )
             };

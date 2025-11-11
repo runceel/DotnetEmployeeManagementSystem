@@ -20,12 +20,14 @@ public class EmployeeRepository : IEmployeeRepository
     public async Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Employees
+            .Include(e => e.Department)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
     public async Task<IEnumerable<Employee>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Employees
+            .Include(e => e.Department)
             .OrderBy(e => e.CreatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -33,6 +35,7 @@ public class EmployeeRepository : IEmployeeRepository
     public async Task<Employee?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         return await _context.Employees
+            .Include(e => e.Department)
             .FirstOrDefaultAsync(e => e.Email == email, cancellationToken);
     }
 

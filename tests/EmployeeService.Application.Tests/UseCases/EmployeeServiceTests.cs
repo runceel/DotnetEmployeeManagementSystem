@@ -9,12 +9,24 @@ namespace EmployeeService.Application.Tests.UseCases;
 public class EmployeeServiceTests
 {
     private readonly Mock<IEmployeeRepository> _mockRepository;
+    private readonly Mock<IDepartmentRepository> _mockDepartmentRepository;
     private readonly IEmployeeService _service;
+    private static readonly Guid TestDepartmentId = Guid.NewGuid();
+    private static readonly Department TestDepartment = new Department("開発部", "ソフトウェア開発を担当する部署");
+    private static readonly Department TestDepartment2 = new Department("営業部", "営業活動を担当する部署");
 
     public EmployeeServiceTests()
     {
         _mockRepository = new Mock<IEmployeeRepository>();
-        _service = new EmployeeService.Application.UseCases.EmployeeService(_mockRepository.Object);
+        _mockDepartmentRepository = new Mock<IDepartmentRepository>();
+        
+        // Setup default department lookup - include multiple departments
+        _mockDepartmentRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { TestDepartment, TestDepartment2 });
+            
+        _service = new EmployeeService.Application.UseCases.EmployeeService(
+            _mockRepository.Object, 
+            _mockDepartmentRepository.Object);
     }
 
     [Fact]
@@ -23,7 +35,7 @@ public class EmployeeServiceTests
         // Arrange
         var employeeId = Guid.NewGuid();
         var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
-            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
         
         _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(employee);
@@ -62,9 +74,9 @@ public class EmployeeServiceTests
         var employees = new List<Employee>
         {
             new Employee("太郎", "山田", "yamada.taro@example.com", 
-                new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア"),
+                new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア"),
             new Employee("花子", "佐藤", "sato.hanako@example.com", 
-                new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc), "営業部", "マネージャー")
+                new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "マネージャー")
         };
 
         _mockRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
@@ -116,7 +128,7 @@ public class EmployeeServiceTests
     {
         // Arrange
         var existingEmployee = new Employee("次郎", "田中", "duplicate@example.com", 
-            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
         
         var request = new CreateEmployeeRequest
         {
@@ -143,7 +155,7 @@ public class EmployeeServiceTests
         // Arrange
         var employeeId = Guid.NewGuid();
         var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
-            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
 
         var request = new UpdateEmployeeRequest
         {
@@ -206,7 +218,7 @@ public class EmployeeServiceTests
         // Arrange
         var employeeId = Guid.NewGuid();
         var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
-            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "開発部", "エンジニア");
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
 
         _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(employee);

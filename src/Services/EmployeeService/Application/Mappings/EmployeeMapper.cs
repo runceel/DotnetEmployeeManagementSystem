@@ -20,7 +20,7 @@ public static class EmployeeMapper
             LastName = employee.LastName,
             Email = employee.Email,
             HireDate = employee.HireDate,
-            Department = employee.Department,
+            Department = employee.Department?.Name ?? string.Empty,
             Position = employee.Position,
             FullName = employee.GetFullName(),
             CreatedAt = employee.CreatedAt,
@@ -29,16 +29,16 @@ public static class EmployeeMapper
     }
 
     /// <summary>
-    /// 作成リクエストからエンティティを生成
+    /// 作成リクエストからエンティティを生成（部署IDが必要）
     /// </summary>
-    public static Employee ToEntity(this CreateEmployeeRequest request)
+    public static Employee ToEntity(this CreateEmployeeRequest request, Guid departmentId)
     {
         return new Employee(
             request.FirstName,
             request.LastName,
             request.Email,
             request.HireDate,
-            request.Department,
+            departmentId,
             request.Position
         );
     }
