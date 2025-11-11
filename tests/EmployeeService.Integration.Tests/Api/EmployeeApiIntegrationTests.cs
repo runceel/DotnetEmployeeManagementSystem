@@ -64,12 +64,18 @@ public class EmployeeApiIntegrationTests : IClassFixture<WebApplicationFactory<P
             });
         });
         
-        // Seed test department
+        // Seed test departments
         using (var scope = factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<EmployeeDbContext>();
-            var dept = new EmployeeService.Domain.Entities.Department("開発部", "ソフトウェア開発を担当する部署");
-            context.Departments.Add(dept);
+            var departments = new[]
+            {
+                new EmployeeService.Domain.Entities.Department("開発部", "ソフトウェア開発を担当する部署"),
+                new EmployeeService.Domain.Entities.Department("営業部", "営業活動を担当する部署"),
+                new EmployeeService.Domain.Entities.Department("人事部", "人事管理を担当する部署"),
+                new EmployeeService.Domain.Entities.Department("総務部", "総務・庶務を担当する部署")
+            };
+            context.Departments.AddRange(departments);
             context.SaveChanges();
         }
         
