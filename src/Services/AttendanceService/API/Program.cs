@@ -76,7 +76,7 @@ if (!builder.Environment.IsEnvironment("Test"))
     builder.Services.AddHttpClient("EmployeeService", client =>
     {
         // Aspire Service Discoveryを使用する場合
-        client.BaseAddress = new Uri("http://employeeservice");
+        client.BaseAddress = new Uri("http://employeeservice-api");
     });
 }
 
