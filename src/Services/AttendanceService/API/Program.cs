@@ -86,41 +86,65 @@ var app = builder.Build();
 if (!app.Environment.IsEnvironment("Test"))
 {
     // EmployeeServiceから従業員IDを取得してシードデータを生成
-    try
-    {
-        var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
-        var httpClient = httpClientFactory.CreateClient("EmployeeService");
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    // リトライロジック付き（EmployeeServiceの初期化完了を待つ）
+    var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("EmployeeService");
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-        logger.LogInformation("Fetching employee IDs from EmployeeService for seed data generation...");
-        
-        var response = await httpClient.GetAsync("/api/employees");
-        if (response.IsSuccessStatusCode)
+    const int maxRetries = 5;
+    const int delayMilliseconds = 2000;
+    List<EmployeeDto>? employees = null;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
         {
-            var employees = await response.Content.ReadFromJsonAsync<List<EmployeeDto>>();
-            if (employees != null && employees.Any())
+            logger.LogInformation("Attempting to fetch employee IDs from EmployeeService (attempt {Attempt}/{MaxRetries})...",
+                attempt, maxRetries);
+            
+            var response = await httpClient.GetAsync("/api/employees");
+            if (response.IsSuccessStatusCode)
             {
-                var employeeIds = employees.Select(e => e.Id).ToList();
-                logger.LogInformation("Retrieved {Count} employee IDs from EmployeeService.", employeeIds.Count);
-                await DbInitializer.InitializeAsync(app.Services, employeeIds);
+                employees = await response.Content.ReadFromJsonAsync<List<EmployeeDto>>();
+                if (employees != null && employees.Any())
+                {
+                    logger.LogInformation("Successfully retrieved {Count} employee IDs from EmployeeService.", employees.Count);
+                    break;
+                }
+                else
+                {
+                    logger.LogWarning("No employees found in EmployeeService on attempt {Attempt}.", attempt);
+                }
             }
             else
             {
-                logger.LogWarning("No employees found in EmployeeService. Skipping seed data generation.");
-                await DbInitializer.InitializeAsync(app.Services);
+                logger.LogWarning("Failed to fetch employees from EmployeeService (Status: {StatusCode}) on attempt {Attempt}.",
+                    response.StatusCode, attempt);
             }
         }
-        else
+        catch (Exception ex)
         {
-            logger.LogWarning("Failed to fetch employees from EmployeeService (Status: {StatusCode}). Skipping seed data generation.",
-                response.StatusCode);
-            await DbInitializer.InitializeAsync(app.Services);
+            logger.LogWarning(ex, "Error occurred while fetching employee IDs from EmployeeService on attempt {Attempt}.", attempt);
+        }
+
+        // Wait before retrying (except on the last attempt)
+        if (attempt < maxRetries)
+        {
+            logger.LogInformation("Waiting {Delay}ms before retry...", delayMilliseconds);
+            await Task.Delay(delayMilliseconds);
         }
     }
-    catch (Exception ex)
+
+    // Initialize with employee IDs if we got them, otherwise skip seed data
+    if (employees != null && employees.Any())
     {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Error occurred while fetching employee IDs from EmployeeService. Skipping seed data generation.");
+        var employeeIds = employees.Select(e => e.Id).ToList();
+        await DbInitializer.InitializeAsync(app.Services, employeeIds);
+    }
+    else
+    {
+        logger.LogWarning("Could not retrieve employees from EmployeeService after {MaxRetries} attempts. Skipping seed data generation.",
+            maxRetries);
         await DbInitializer.InitializeAsync(app.Services);
     }
 }
