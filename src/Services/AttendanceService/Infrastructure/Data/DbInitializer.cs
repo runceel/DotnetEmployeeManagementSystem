@@ -1,6 +1,7 @@
 using AttendanceService.Domain.Entities;
 using AttendanceService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -14,17 +15,38 @@ public static class DbInitializer
     /// <summary>
     /// データベースを初期化してサンプルデータを投入
     /// </summary>
-    public static async Task InitializeAsync(IServiceProvider serviceProvider)
+    /// <param name="serviceProvider">サービスプロバイダー</param>
+    /// <param name="employeeIds">従業員IDのリスト（指定しない場合は自動取得またはスキップ）</param>
+    public static async Task InitializeAsync(IServiceProvider serviceProvider, IEnumerable<Guid>? employeeIds = null)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AttendanceDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<AttendanceDbContext>>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
         try
         {
             // データベースが存在しない場合は作成し、マイグレーションを適用
-            await context.Database.MigrateAsync();
-            logger.LogInformation("Database migration completed.");
+            // InMemoryDatabaseの場合はEnsureCreatedを使用
+            var isInMemory = context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            if (isInMemory)
+            {
+                await context.Database.EnsureCreatedAsync();
+                logger.LogInformation("In-memory database created.");
+            }
+            else
+            {
+                await context.Database.MigrateAsync();
+                logger.LogInformation("Database migration completed.");
+            }
+
+            // シードデータ生成を無効化するオプション
+            var skipSeedingStr = configuration["AttendanceService:SkipSeedData"];
+            if (!string.IsNullOrEmpty(skipSeedingStr) && bool.TryParse(skipSeedingStr, out var skipSeeding) && skipSeeding)
+            {
+                logger.LogInformation("Seed data generation is disabled by configuration.");
+                return;
+            }
 
             // データが既に存在する場合はスキップ
             if (await context.Attendances.Take(1).AnyAsync())
@@ -33,17 +55,17 @@ public static class DbInitializer
                 return;
             }
 
-            // サンプル従業員ID
-            // 注意: これらのGUIDはデモ用です。実際の従業員IDはEmployeeServiceから取得する必要があります。
-            // 本番環境では、EmployeeService APIを呼び出して実在する従業員IDを取得してください。
-            var employeeIds = new[]
+            // 従業員IDが指定されていない場合はスキップ
+            if (employeeIds == null || !employeeIds.Any())
             {
-                Guid.Parse("00000000-0000-0000-0000-000000000001"), // サンプル従業員1
-                Guid.Parse("00000000-0000-0000-0000-000000000002"), // サンプル従業員2
-                Guid.Parse("00000000-0000-0000-0000-000000000003"), // サンプル従業員3
-                Guid.Parse("00000000-0000-0000-0000-000000000004"), // サンプル従業員4
-                Guid.Parse("00000000-0000-0000-0000-000000000005")  // サンプル従業員5
-            };
+                logger.LogWarning("No employee IDs provided. Skipping seed data generation. " +
+                    "Call InitializeAsync with employee IDs from EmployeeService to generate demo data.");
+                return;
+            }
+
+            var employeeIdList = employeeIds.ToList();
+
+            logger.LogInformation("Starting seed data generation for {EmployeeCount} employees.", employeeIdList.Count);
 
             var attendances = new List<Attendance>();
             var random = new Random(42); // 固定シード値で再現可能なデータを生成
@@ -52,7 +74,7 @@ public static class DbInitializer
             var today = DateTime.UtcNow.Date;
             var startDate = today.AddMonths(-3);
 
-            foreach (var employeeId in employeeIds)
+            foreach (var employeeId in employeeIdList)
             {
                 var currentDate = startDate;
 
@@ -112,7 +134,7 @@ public static class DbInitializer
             var leaveRequests = new List<LeaveRequest>();
             
             // 各従業員に2-3件の休暇申請を追加
-            foreach (var employeeId in employeeIds)
+            foreach (var employeeId in employeeIdList)
             {
                 var leaveCount = random.Next(2, 4);
                 for (int i = 0; i < leaveCount; i++)
@@ -141,13 +163,13 @@ public static class DbInitializer
                     // 75%の確率で承認済み
                     if (random.Next(100) < 75)
                     {
-                        var approverId = employeeIds[random.Next(employeeIds.Length)];
+                        var approverId = employeeIdList[random.Next(employeeIdList.Count)];
                         leaveRequest.Approve(approverId, "承認しました");
                     }
                     // 10%の確率で却下
                     else if (random.Next(100) < 10)
                     {
-                        var approverId = employeeIds[random.Next(employeeIds.Length)];
+                        var approverId = employeeIdList[random.Next(employeeIdList.Count)];
                         leaveRequest.Reject(approverId, "理由が不十分です");
                     }
 
@@ -165,6 +187,37 @@ public static class DbInitializer
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while initializing the database.");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// シードデータをクリア（開発環境専用）
+    /// </summary>
+    /// <param name="serviceProvider">サービスプロバイダー</param>
+    public static async Task ClearSeedDataAsync(IServiceProvider serviceProvider)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AttendanceDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<AttendanceDbContext>>();
+
+        try
+        {
+            // 全ての勤怠記録と休暇申請を削除
+            var attendanceCount = await context.Attendances.CountAsync();
+            var leaveRequestCount = await context.LeaveRequests.CountAsync();
+
+            context.Attendances.RemoveRange(context.Attendances);
+            context.LeaveRequests.RemoveRange(context.LeaveRequests);
+            
+            await context.SaveChangesAsync();
+
+            logger.LogInformation("Cleared {AttendanceCount} attendances and {LeaveRequestCount} leave requests.",
+                attendanceCount, leaveRequestCount);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while clearing seed data.");
             throw;
         }
     }
