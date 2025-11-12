@@ -27,6 +27,8 @@ var notificationServiceApi = builder.AddProject<Projects.NotificationService_API
 var attendanceServiceApi = builder.AddProject<Projects.AttendanceService_API>("attendanceservice-api")
     .WithReference(attendanceDb)
     .WithReference(redis)
+    .WithReference(employeeServiceApi)
+    .WaitFor(employeeServiceApi)
     .WithHttpHealthCheck("/health");
 
 // Add Blazor web app with service references

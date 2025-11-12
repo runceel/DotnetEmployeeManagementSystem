@@ -71,6 +71,13 @@ if (!builder.Environment.IsEnvironment("Test"))
 
     // Redis接続の追加
     builder.AddRedisClient("redis");
+
+    // EmployeeService API呼び出し用のHttpClientを追加
+    builder.Services.AddHttpClient("EmployeeService", client =>
+    {
+        // Aspire Service Discoveryを使用する場合
+        client.BaseAddress = new Uri("http://employeeservice");
+    });
 }
 
 var app = builder.Build();
@@ -78,7 +85,68 @@ var app = builder.Build();
 // データベース初期化 (Test環境では実行しない)
 if (!app.Environment.IsEnvironment("Test"))
 {
-    await DbInitializer.InitializeAsync(app.Services);
+    // EmployeeServiceから従業員IDを取得してシードデータを生成
+    // リトライロジック付き（EmployeeServiceの初期化完了を待つ）
+    var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("EmployeeService");
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+    const int maxRetries = 5;
+    const int delayMilliseconds = 2000;
+    List<EmployeeDto>? employees = null;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            logger.LogInformation("Attempting to fetch employee IDs from EmployeeService (attempt {Attempt}/{MaxRetries})...",
+                attempt, maxRetries);
+            
+            var response = await httpClient.GetAsync("/api/employees");
+            if (response.IsSuccessStatusCode)
+            {
+                employees = await response.Content.ReadFromJsonAsync<List<EmployeeDto>>();
+                if (employees != null && employees.Any())
+                {
+                    logger.LogInformation("Successfully retrieved {Count} employee IDs from EmployeeService.", employees.Count);
+                    break;
+                }
+                else
+                {
+                    logger.LogWarning("No employees found in EmployeeService on attempt {Attempt}.", attempt);
+                }
+            }
+            else
+            {
+                logger.LogWarning("Failed to fetch employees from EmployeeService (Status: {StatusCode}) on attempt {Attempt}.",
+                    response.StatusCode, attempt);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Error occurred while fetching employee IDs from EmployeeService on attempt {Attempt}.", attempt);
+        }
+
+        // Wait before retrying (except on the last attempt)
+        if (attempt < maxRetries)
+        {
+            logger.LogInformation("Waiting {Delay}ms before retry...", delayMilliseconds);
+            await Task.Delay(delayMilliseconds);
+        }
+    }
+
+    // Initialize with employee IDs if we got them, otherwise skip seed data
+    if (employees != null && employees.Any())
+    {
+        var employeeIds = employees.Select(e => e.Id).ToList();
+        await DbInitializer.InitializeAsync(app.Services, employeeIds);
+    }
+    else
+    {
+        logger.LogWarning("Could not retrieve employees from EmployeeService after {MaxRetries} attempts. Skipping seed data generation.",
+            maxRetries);
+        await DbInitializer.InitializeAsync(app.Services);
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -122,9 +190,29 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .WithName("HealthCheck")
     .WithTags("Health");
 
-// Development-only endpoint to seed attendance data for specific employees
+// Development-only endpoints
 if (app.Environment.IsDevelopment())
 {
+    // シードデータをクリア
+    app.MapDelete("/api/dev/clear-seed-data", async () =>
+    {
+        try
+        {
+            await DbInitializer.ClearSeedDataAsync(app.Services);
+            return Results.Ok(new { message = "Seed data cleared successfully" });
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+    .WithName("ClearSeedData")
+    .WithTags("Development")
+    .WithSummary("シードデータをクリア")
+    .WithDescription("開発環境専用：全ての勤怠記録と休暇申請を削除します。")
+    .ExcludeFromDescription();
+
+    // 特定の従業員に対してシードデータを生成
     app.MapPost("/api/dev/seed-attendances", async (
         [FromBody] List<Guid> employeeIds,
         [FromServices] IAttendanceRepository attendanceRepository,
@@ -1023,6 +1111,9 @@ static LeaveRequestDto MapToDto(AttendanceService.Domain.Entities.LeaveRequest l
 }
 
 app.Run();
+
+// EmployeeDto for deserialization
+record EmployeeDto(Guid Id, string FirstName, string LastName, string Email, DateTime HireDate, Guid DepartmentId, string Position);
 
 // Make Program class accessible for integration tests
 public partial class Program { }
