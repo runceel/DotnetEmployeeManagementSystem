@@ -5,6 +5,7 @@ using AttendanceService.Infrastructure;
 using AttendanceService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using Shared.Contracts.AttendanceService;
 
