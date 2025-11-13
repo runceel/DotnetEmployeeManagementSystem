@@ -47,7 +47,7 @@ builder.Services.AddOpenApi("v1", options =>
         // Add security scheme
         document.Components ??= new OpenApiComponents();
         if (document.Components.SecuritySchemes == null)
-            document.Components.SecuritySchemes = new Dictionary<string, OpenApiSecurityScheme>();
+            document.Components.SecuritySchemes = new Dictionary<string, OpenApiSecurityScheme>() as IDictionary<string, IOpenApiSecurityScheme>;
         document.Components.SecuritySchemes.Add("Bearer", new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.Http,
