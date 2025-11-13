@@ -297,8 +297,7 @@ if (app.Environment.IsDevelopment())
 
 // Attendance API endpoints
 var attendances = app.MapGroup("/api/attendances")
-    .WithTags("Attendances")
-    .WithOpenApi();
+    .WithTags("Attendances");
 
 // 全勤怠記録を取得
 attendances.MapGet("/", () =>
@@ -834,7 +833,7 @@ attendances.MapGet("/employee/{employeeId:guid}/summary/{year:int}/{month:int}",
 // Leave Request API endpoints
 var leaveRequests = app.MapGroup("/api/leaverequests")
     .WithTags("LeaveRequests")
-    .WithOpenApi();
+    ;
 
 // 全休暇申請を取得
 leaveRequests.MapGet("/", async (
