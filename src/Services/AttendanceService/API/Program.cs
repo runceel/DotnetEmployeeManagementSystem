@@ -4,9 +4,11 @@ using AttendanceService.Domain.Repositories;
 using AttendanceService.Infrastructure;
 using AttendanceService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using Shared.Contracts.AttendanceService;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,17 +46,18 @@ builder.Services.AddOpenApi("v1", options =>
             }
         };
         
-        // Add security scheme
+        // Add security scheme (Bearer JWT)
         document.Components ??= new OpenApiComponents();
-        if (document.Components.SecuritySchemes == null)
-            document.Components.SecuritySchemes = new Dictionary<string, OpenApiSecurityScheme>() as IDictionary<string, IOpenApiSecurityScheme>;
-        document.Components.SecuritySchemes.Add("Bearer", new OpenApiSecurityScheme
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            Description = "JWT認証トークンを入力してください"
-        });
+            Description = "JWT認証トークンを入力してください",
+            In = ParameterLocation.Header,
+            Name = "Authorization"
+        };
         
         return Task.CompletedTask;
     });

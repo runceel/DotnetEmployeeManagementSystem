@@ -2,6 +2,8 @@ using AuthService.Application.Services;
 using AuthService.Infrastructure;
 using AuthService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using Shared.Contracts.AuthService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,8 +12,37 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new OpenApiInfo
+        {
+            Title = "AuthService API",
+            Version = "v1",
+            Description = "認証・ユーザー管理API",
+            Contact = new OpenApiContact
+            {
+                Name = "開発チーム",
+                Email = "dev@example.com"
+            }
+        };
+
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "JWT認証トークンを入力してください",
+            In = ParameterLocation.Header,
+            Name = "Authorization"
+        };
+
+        return Task.CompletedTask;
+    });
+});
 
 // データベース接続文字列とInfrastructure層の初期化
 var connectionString = builder.Configuration.GetConnectionString("AuthDb") 
