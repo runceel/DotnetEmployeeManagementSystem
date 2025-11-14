@@ -9,6 +9,8 @@ using NotificationService.Infrastructure.Repositories;
 using NotificationService.Infrastructure.Services;
 using NotificationService.Infrastructure.Workers;
 using StackExchange.Redis;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +18,37 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Add services to the container.
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new OpenApiInfo
+        {
+            Title = "NotificationService API",
+            Version = "v1",
+            Description = "通知送信とイベント処理のAPI",
+            Contact = new OpenApiContact
+            {
+                Name = "開発チーム",
+                Email = "dev@example.com"
+            }
+        };
+
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "JWT認証トークンを入力してください",
+            In = ParameterLocation.Header,
+            Name = "Authorization"
+        };
+
+        return Task.CompletedTask;
+    });
+});
 
 // データベース接続文字列 (Test環境ではスキップ)
 if (!builder.Environment.IsEnvironment("Test"))

@@ -1,4 +1,5 @@
 using EmployeeService.Domain.Entities;
+using Xunit;
 
 namespace EmployeeService.Domain.Tests.Entities;
 

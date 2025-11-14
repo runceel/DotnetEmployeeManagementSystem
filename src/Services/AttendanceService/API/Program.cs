@@ -4,9 +4,11 @@ using AttendanceService.Domain.Repositories;
 using AttendanceService.Infrastructure;
 using AttendanceService.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using Shared.Contracts.AttendanceService;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,16 +46,18 @@ builder.Services.AddOpenApi("v1", options =>
             }
         };
         
-        // Add security scheme
+        // Add security scheme (Bearer JWT)
         document.Components ??= new OpenApiComponents();
-        document.Components.SecuritySchemes ??= new Dictionary<string, OpenApiSecurityScheme>();
-        document.Components.SecuritySchemes.Add("Bearer", new OpenApiSecurityScheme
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            Description = "JWT認証トークンを入力してください"
-        });
+            Description = "JWT認証トークンを入力してください",
+            In = ParameterLocation.Header,
+            Name = "Authorization"
+        };
         
         return Task.CompletedTask;
     });
@@ -293,8 +297,7 @@ if (app.Environment.IsDevelopment())
 
 // Attendance API endpoints
 var attendances = app.MapGroup("/api/attendances")
-    .WithTags("Attendances")
-    .WithOpenApi();
+    .WithTags("Attendances");
 
 // 全勤怠記録を取得
 attendances.MapGet("/", () =>
@@ -830,7 +833,7 @@ attendances.MapGet("/employee/{employeeId:guid}/summary/{year:int}/{month:int}",
 // Leave Request API endpoints
 var leaveRequests = app.MapGroup("/api/leaverequests")
     .WithTags("LeaveRequests")
-    .WithOpenApi();
+    ;
 
 // 全休暇申請を取得
 leaveRequests.MapGet("/", async (
