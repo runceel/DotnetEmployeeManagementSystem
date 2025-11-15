@@ -146,6 +146,271 @@ public static class YourEntityEndpoints
 app.MapYourEntityEndpoints();
 ```
 
+## API エンドポイントの構成パターン
+
+### 原則
+
+マイクロサービスAPIの構成では、以下の原則に従います：
+
+- **Program.cs には最小限の構成のみ**: アプリケーションの起動と構成の呼び出しのみを記述
+- **エンドポイントは機能別に分離**: 各エンドポイントグループを独立したクラスに配置
+- **拡張メソッドパターンを使用**: `IEndpointRouteBuilder` の拡張メソッドとして実装
+- **設定は Extensions フォルダに分離**: OpenAPI、認証、例外処理などの設定を独立したクラスに配置
+
+### ディレクトリ構成
+
+```
+API/
+├── Program.cs                      # アプリケーションエントリポイント（最小限）
+├── Endpoints/                      # エンドポイント定義
+│   ├── [Feature]Endpoints.cs      # 機能別エンドポイント
+│   └── DevelopmentEndpoints.cs    # 開発環境専用エンドポイント（オプション）
+├── Extensions/                     # 構成拡張メソッド
+│   ├── OpenApiConfigurationExtensions.cs
+│   ├── AuthenticationConfigurationExtensions.cs  # 認証が必要な場合
+│   ├── ExceptionHandlingExtensions.cs           # グローバル例外処理が必要な場合
+│   └── DatabaseInitializationExtensions.cs      # 複雑な初期化ロジックがある場合
+├── Mappers/                        # DTO変換（必要に応じて）
+│   └── [Entity]Mapper.cs
+└── Authentication/                 # カスタム認証ハンドラー（必要に応じて）
+    └── CustomAuthenticationHandler.cs
+```
+
+### 実装例
+
+#### Program.cs（推奨パターン）
+
+```csharp
+using EmployeeService.API.Endpoints;
+using EmployeeService.API.Extensions;
+using EmployeeService.Application.UseCases;
+using EmployeeService.Infrastructure;
+using EmployeeService.Infrastructure.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add service defaults & Aspire client integrations.
+builder.AddServiceDefaults();
+
+// Add services to the container.
+builder.Services.AddEmployeeServiceOpenApi();
+
+// 認証・認可の設定
+builder.Services.AddEmployeeServiceAuthentication(builder.Configuration, builder.Environment);
+
+// データベース接続文字列とInfrastructure層の初期化
+if (!builder.Environment.IsEnvironment("Test"))
+{
+    var connectionString = builder.Configuration.GetConnectionString("EmployeeDb") 
+        ?? "Data Source=employees.db";
+    
+    builder.Services.AddInfrastructure(connectionString);
+    builder.AddRedisClient("redis");
+}
+
+// Application層のサービスを追加
+builder.Services.AddScoped<IEmployeeService, EmployeeService.Application.UseCases.EmployeeService>();
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+
+var app = builder.Build();
+
+// データベース初期化
+if (!app.Environment.IsEnvironment("Test"))
+{
+    await DbInitializer.InitializeAsync(app.Services);
+}
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+app.MapDefaultEndpoints();
+
+app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Map endpoints
+app.MapEmployeeEndpoints();
+app.MapDepartmentEndpoints();
+
+app.Run();
+
+// Make Program class accessible for integration tests
+public partial class Program { }
+```
+
+#### エンドポイントクラス
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+
+namespace EmployeeService.API.Endpoints;
+
+public static class EmployeeEndpoints
+{
+    public static IEndpointRouteBuilder MapEmployeeEndpoints(this IEndpointRouteBuilder app)
+    {
+        var employees = app.MapGroup("/api/employees")
+            .WithTags("Employees");
+
+        employees.MapGet("/{id:guid}", GetEmployeeById)
+            .WithName("GetEmployeeById")
+            .WithSummary("IDで従業員を取得")
+            .Produces<EmployeeDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        employees.MapPost("/", CreateEmployee)
+            .WithName("CreateEmployee")
+            .WithSummary("従業員を作成")
+            .Produces<EmployeeDto>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .RequireAuthorization("AdminPolicy");
+
+        return app;
+    }
+
+    private static async Task<IResult> GetEmployeeById(
+        Guid id,
+        [FromServices] IEmployeeService employeeService)
+    {
+        var result = await employeeService.GetByIdAsync(id);
+        return result is not null ? Results.Ok(result) : Results.NotFound();
+    }
+
+    private static async Task<IResult> CreateEmployee(
+        [FromBody] CreateEmployeeRequest request,
+        [FromServices] IEmployeeService employeeService)
+    {
+        try
+        {
+            var result = await employeeService.CreateAsync(request);
+            return Results.Created($"/api/employees/{result.Id}", result);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+}
+```
+
+#### OpenAPI設定拡張メソッド
+
+```csharp
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
+
+namespace EmployeeService.API.Extensions;
+
+public static class OpenApiConfigurationExtensions
+{
+    public static IServiceCollection AddEmployeeServiceOpenApi(this IServiceCollection services)
+    {
+        services.AddOpenApi("v1", options =>
+        {
+            options.AddDocumentTransformer((document, context, cancellationToken) =>
+            {
+                document.Info = new OpenApiInfo
+                {
+                    Title = "EmployeeService API",
+                    Version = "v1",
+                    Description = "従業員と部署の管理API",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "開発チーム",
+                        Email = "dev@example.com"
+                    }
+                };
+
+                document.Components ??= new OpenApiComponents();
+                document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "JWT認証トークンを入力してください",
+                    In = ParameterLocation.Header,
+                    Name = "Authorization"
+                };
+
+                return Task.CompletedTask;
+            });
+        });
+        
+        return services;
+    }
+}
+```
+
+#### 認証設定拡張メソッド（必要に応じて）
+
+```csharp
+using Microsoft.AspNetCore.Authentication;
+
+namespace EmployeeService.API.Extensions;
+
+public static class AuthenticationConfigurationExtensions
+{
+    public static IServiceCollection AddEmployeeServiceAuthentication(
+        this IServiceCollection services, 
+        IConfiguration configuration, 
+        IHostEnvironment environment)
+    {
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = "CustomAuth";
+            options.DefaultChallengeScheme = "CustomAuth";
+        })
+        .AddScheme<AuthenticationSchemeOptions, CustomAuthenticationHandler>("CustomAuth", null)
+        .AddJwtBearer(options =>
+        {
+            // JWT設定
+        });
+
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminPolicy", policy =>
+            {
+                policy.RequireRole("Admin");
+            });
+        });
+
+        return services;
+    }
+}
+```
+
+### ベストプラクティス
+
+1. **エンドポイントメソッドは private static に**: 外部から直接呼び出す必要がないため
+2. **依存性注入を活用**: `[FromServices]` 属性でサービスを注入
+3. **明確な戻り値**: `IResult` を使用して HTTP レスポンスを明示的に返す
+4. **エラーハンドリング**: 適切な例外処理と HTTP ステータスコードの返却
+5. **OpenAPI メタデータ**: `WithName`, `WithSummary`, `WithDescription`, `Produces` でドキュメント化
+6. **認可の明示**: `RequireAuthorization` でポリシーを指定
+7. **バリデーション**: リクエストデータの検証を忘れずに実施
+
+### 既存プロジェクトの例
+
+本プロジェクトでは、以下のサービスでこのパターンを実装しています：
+
+- **AttendanceService**: 勤怠管理API（65行のProgram.cs）
+  - `AttendanceEndpoints.cs`: 勤怠記録CRUD、チェックイン/アウト
+  - `LeaveRequestEndpoints.cs`: 休暇申請CRUD、承認/却下
+  - `DevelopmentEndpoints.cs`: 開発用エンドポイント
+
+- **EmployeeService**: 従業員管理API（63行のProgram.cs）
+  - `EmployeeEndpoints.cs`: 従業員CRUD、ダッシュボード統計
+  - `DepartmentEndpoints.cs`: 部署CRUD
+
+- **AuthService**: 認証API（42行のProgram.cs）
+  - `AuthEndpoints.cs`: ログイン、ユーザー登録
+
 ### 2. 新しいマイクロサービスの追加
 
 #### Step 1: プロジェクトの作成
