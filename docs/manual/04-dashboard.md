@@ -407,5 +407,5 @@ Dashboard.razor
 - [開発者ガイド](../development-guide.md)
 - [アーキテクチャ詳細設計書](../architecture-detailed.md)
 
-**最終更新日:** 2025-11-10  
+**最終更新日:** 2025-11-15  
 **対象バージョン:** .NET 10 / Aspire 13.0.0
