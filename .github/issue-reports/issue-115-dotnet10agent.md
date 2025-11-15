@@ -394,6 +394,55 @@ Total: 136 tests, 136 passed
 
 ---
 
+## 📦 実施した作業
+
+このIssueの完了にあたり、以下の作業を実施しました：
+
+### ドキュメント作成
+1. ✅ **調査報告書** (issue-115-dotnet10agent.md)
+   - 環境調査結果
+   - .NET 10 SDK の利用可能性確認
+   - カスタマイズ方法の調査
+   - 推奨事項のまとめ
+
+2. ✅ **オプション設定例集** (issue-115-optional-config-examples.md)
+   - global.json の例
+   - .github/copilot-instructions.md の例
+   - GitHub Actions ワークフローの例
+   - .editorconfig の例
+   - dependabot.yml の例
+
+### ドキュメント更新
+3. ✅ **AGENTS.md**
+   - .NET 9 → .NET 10
+   - Aspire 9.5.2 → 13.0.0
+   - Entity Framework Core 9 → 10
+   - Aspire workload インストール手順の修正
+
+4. ✅ **docs/getting-started.md**
+   - 前提条件を .NET 10 SDK に更新
+   - Aspire の取得方法を明確化
+
+5. ✅ **docs/architecture.md**
+   - Blazor 技術スタックを .NET 10 に更新
+
+6. ✅ **docs/architecture-detailed.md**
+   - .NET 9 → .NET 10 の参照更新
+   - ドキュメントバージョンと対象システムバージョンの更新
+
+7. ✅ **docs/manual/01-intro.md**
+   - システム紹介の .NET バージョン更新
+
+8. ✅ **docs/manual/04-dashboard.md**
+   - 対象バージョンの更新
+
+### 検証
+9. ✅ **ビルドとテストの実行**
+   - ビルド成功確認（警告のみ、エラーなし）
+   - 全テスト成功確認（136/136 テストパス）
+
+---
+
 ## 👤 作成者情報
 
 **調査実施者**: GitHub Copilot Coding Agent  

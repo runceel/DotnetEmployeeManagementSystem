@@ -408,4 +408,4 @@ Dashboard.razor
 - [アーキテクチャ詳細設計書](../architecture-detailed.md)
 
 **最終更新日:** 2025-11-10  
-**対象バージョン:** .NET 9 / Aspire 9.5.2
+**対象バージョン:** .NET 10 / Aspire 13.0.0
