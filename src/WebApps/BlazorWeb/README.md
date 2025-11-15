@@ -4,7 +4,7 @@
 
 ## 技術スタック
 
-- Blazor Web App (.NET 9)
+- Blazor Web App (.NET 10)
 - MudBlazor - Material Design UIコンポーネントライブラリ
 - .NET Aspire Service Defaults
 

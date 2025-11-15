@@ -110,8 +110,8 @@ graph TD
 
 ### 前提条件
 
-- .NET 9 SDK
-- .NET Aspire Workload
+- .NET 10 SDK
+- .NET Aspire（NuGet パッケージとして提供）
 
 ### プロジェクト構成
 

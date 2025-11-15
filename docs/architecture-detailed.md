@@ -1360,7 +1360,7 @@ await _hubContext.Clients.All.SendAsync("EmployeeUpdated", employee);
 - [Entra ID統合設計](entra-id-integration-design.md) - エンタープライズ認証統合
 
 ### 外部リソース
-- [.NET 9 ドキュメント](https://learn.microsoft.com/dotnet/core/whats-new/dotnet-9)
+- [.NET 10 ドキュメント](https://learn.microsoft.com/dotnet/core/whats-new/dotnet-10)
 - [.NET Aspire ドキュメント](https://learn.microsoft.com/dotnet/aspire/)
 - [Entity Framework Core](https://learn.microsoft.com/ef/core/)
 - [OpenTelemetry .NET](https://opentelemetry.io/docs/languages/net/)
@@ -1369,7 +1369,7 @@ await _hubContext.Clients.All.SendAsync("EmployeeUpdated", employee);
 
 ## 15. まとめ
 
-本従業員管理システムは、最新の.NET 9と.NET Aspireを活用した、モダンなマイクロサービスアーキテクチャを採用しています。
+本従業員管理システムは、最新の.NET 10と.NET Aspireを活用した、モダンなマイクロサービスアーキテクチャを採用しています。
 
 **アーキテクチャの特徴**:
 - ✅ マイクロサービスアーキテクチャによる疎結合と独立性
@@ -1400,6 +1400,6 @@ await _hubContext.Clients.All.SendAsync("EmployeeUpdated", employee);
 
 ---
 
-**ドキュメントバージョン**: 1.0  
-**最終更新日**: 2025-11-08  
-**対象システムバージョン**: .NET 9.0, Aspire 9.5.2
+**ドキュメントバージョン**: 1.1  
+**最終更新日**: 2025-11-15  
+**対象システムバージョン**: .NET 10.0, Aspire 13.0.0
