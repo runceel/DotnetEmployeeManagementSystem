@@ -4,13 +4,13 @@
 
 ## 📋 プロジェクト概要
 
-**従業員管理システム** - .NET 9 + .NET Aspire を使用したマイクロサービスアーキテクチャの従業員管理システム
+**従業員管理システム** - .NET 10 + .NET Aspire を使用したマイクロサービスアーキテクチャの従業員管理システム
 
 ### 主要技術スタック
-- **.NET 9** - 最新のフレームワーク
-- **.NET Aspire 9.5.2** - マイクロサービスオーケストレーション
+- **.NET 10** - 最新のフレームワーク
+- **.NET Aspire 13.0.0** - マイクロサービスオーケストレーション
 - **Blazor Web App + MudBlazor** - フロントエンド
-- **Entity Framework Core 9** - ORM
+- **Entity Framework Core 10** - ORM
 - **SQLite** - 開発環境のデータベース
 - **Redis** - Pub/Sub メッセージング
 - **OpenTelemetry** - 可観測性
@@ -92,8 +92,8 @@ DotnetEmployeeManagementSystem/
 
 ### 1. 環境構築
 ```bash
-# 前提条件: .NET 9 SDK インストール済み
-dotnet workload install aspire
+# 前提条件: .NET 10 SDK インストール済み
+# 注: Aspire 13.0.0 は NuGet パッケージとして利用されるため、workload インストールは不要です
 
 # リポジトリクローン・依存関係復元
 git clone https://github.com/runceel/DotnetEmployeeManagementSystem.git
@@ -292,6 +292,7 @@ dotnet format
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-11-15 | 1.1 | .NET 10 / Aspire 13.0.0 への更新 |
 | 2025-11-09 | 1.0 | 初版作成 - ドキュメント管理ルール策定 |
 
 ## 📄 ライセンス

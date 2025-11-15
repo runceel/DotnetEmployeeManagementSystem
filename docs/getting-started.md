@@ -5,14 +5,13 @@
 ## 前提条件
 
 ### 必須
-- **.NET 9 SDK** (9.0.305以降)
-  - [ダウンロード](https://dotnet.microsoft.com/download/dotnet/9.0)
+- **.NET 10 SDK** (10.0.100以降)
+  - [ダウンロード](https://dotnet.microsoft.com/download/dotnet/10.0)
   - インストール確認: `dotnet --version`
 
-- **.NET Aspire Workload**
-  ```bash
-  dotnet workload install aspire
-  ```
+- **.NET Aspire**
+  - Aspire 13.0.0 は NuGet パッケージとして利用されます
+  - Workload インストールは不要です（`dotnet restore` で自動的に取得されます）
 
 ### 推奨
 - **Visual Studio 2022 (v17.12以降)** または **Visual Studio Code**

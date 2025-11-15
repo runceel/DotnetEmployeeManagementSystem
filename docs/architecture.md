@@ -168,7 +168,7 @@ graph LR
 **役割**: Webフロントエンド
 
 **技術スタック**:
-- Blazor Web App（.NET 9）
+- Blazor Web App（.NET 10）
 - MudBlazor UIコンポーネントライブラリ
 - Interactive Server レンダリング
 
