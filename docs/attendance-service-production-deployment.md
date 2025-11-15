@@ -7,7 +7,7 @@
 ## 前提条件
 
 ### 必須要件
-- .NET 9.0 SDK または Runtime
+- .NET 10.0 SDK または Runtime
 - SQLite または PostgreSQL / SQL Server（本番環境推奨）
 - Redis サーバー（Pub/Sub メッセージング用）
 - HTTPS 証明書（本番環境）

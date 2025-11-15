@@ -170,7 +170,7 @@
 
 ## 🔗 外部リンク
 
-- [.NET 9 ドキュメント](https://learn.microsoft.com/dotnet/core/whats-new/dotnet-9/)
+- [.NET 10 ドキュメント](https://learn.microsoft.com/dotnet/core/whats-new/dotnet-10/)
 - [.NET Aspire ドキュメント](https://learn.microsoft.com/dotnet/aspire/)
 - [Entity Framework Core](https://learn.microsoft.com/ef/core/)
 - [MudBlazor](https://mudblazor.com/)

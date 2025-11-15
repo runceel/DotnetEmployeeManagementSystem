@@ -1,12 +1,12 @@
 # 従業員管理システム
 
-.NET 9 + .NET Aspireを使用したマイクロサービスアーキテクチャの従業員管理システム
+.NET 10 + .NET Aspireを使用したマイクロサービスアーキテクチャの従業員管理システム
 
 ## 🚀 クイックスタート
 
 ### 前提条件
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- .NET Aspire Workload: `dotnet workload install aspire`
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- .NET Aspire: NuGet パッケージとして提供（workload インストール不要）
 
 ### 実行方法
 
@@ -68,10 +68,10 @@ DotnetEmployeeManagementSystem/
 
 | カテゴリ | 技術 |
 |---------|------|
-| フレームワーク | .NET 9 |
-| オーケストレーション | .NET Aspire 9.5.2 |
+| フレームワーク | .NET 10 |
+| オーケストレーション | .NET Aspire 13.0.0 |
 | フロントエンド | Blazor Web App + MudBlazor |
-| データアクセス | Entity Framework Core 9 |
+| データアクセス | Entity Framework Core 10 |
 | データベース | SQLite（開発・Aspire統合）、Azure SQL（本番予定） |
 | メッセージング | Redis (Pub/Sub) |
 | 認証 | ASP.NET Core Identity |
