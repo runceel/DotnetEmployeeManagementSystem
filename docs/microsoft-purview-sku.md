@@ -1,111 +1,161 @@
 # Microsoft Purview SKU 情報
 
+> **情報源**: このドキュメントは Microsoft Learn の公式ドキュメントのみに基づいて作成されています。
+
 ## 概要
 
-Microsoft Purview は、Microsoft が提供するデータガバナンス、コンプライアンス、リスク管理のための統合ソリューションです。このドキュメントでは、Microsoft Purview の利用可能な SKU（Stock Keeping Unit）と価格モデルについて説明します。
+Microsoft Purview は、データのガバナンス、保護、管理を支援する包括的なソリューションセットです。Microsoft 365 とWindows/macOS のエンドポイント向けのユーザーごとのライセンスモデルと、Microsoft 365 以外のデータソース向けの従量課金モデルの2つの補完的な課金モデルをサポートしています。
 
-## 価格モデル
+## 利用可能なライセンスプラン（SKU）
 
-Microsoft Purview は2つの主要な価格モデルを提供しています：
+### ユーザーごとのライセンスモデル
 
-### 1. ユーザーごとのライセンスモデル
+Microsoft 365 および Windows/macOS エンドポイントベースのアセットに Microsoft Purview の制御と保護を適用するための標準的なライセンスモデルです。
 
-Microsoft 365 ワークロード（Exchange、SharePoint、Teams、エンドポイント）向けのコンプライアンス、リスク管理、ガバナンス機能を対象としています。
+#### 主要な SKU と機能
 
-#### Microsoft Purview Suite
-- **価格**: $12.00 USD/ユーザー/月（年間契約）
-- **旧名称**: Microsoft 365 E5 Compliance
-- **対象機能**:
-  - データライフサイクル管理
-  - インサイダーリスク管理
-  - eDiscovery
-  - 監査（Audit）
-  - 情報保護
-  - データ損失防止（DLP）
+| SKU | 含まれる機能 |
+|-----|-------------|
+| **Microsoft 365 E5/A5/G5** | Audit (Premium), eDiscovery (Premium), Communication Compliance, Insider Risk Management, Information Protection, DLP など全機能 |
+| **Microsoft 365 E5/A5/G5/F5 Compliance** | コンプライアンス機能の完全セット（旧称: Microsoft 365 E5 Compliance） |
+| **Microsoft 365 F5 Security & Compliance** | セキュリティとコンプライアンス機能のセット |
+| **Microsoft 365 E5/A5/F5/G5 Information Protection and Governance** | 情報保護とガバナンス機能 |
+| **Microsoft 365 E5/A5/G5/F5 eDiscovery and Audit** | eDiscovery と監査機能 |
+| **Microsoft 365 E5/A5/G5/F5 Insider Risk Management** | インサイダーリスク管理機能 |
+| **Microsoft 365 E3/A3/G3** | 基本的なコンプライアンス機能（eDiscovery Standard, Audit Standard など） |
+| **Office 365 E5/A5/G5** | Office 365 のコンプライアンス機能 |
+| **Microsoft 365 Purview Suite** | 包括的な Purview ソリューション（旧称: Microsoft 365 E5 Compliance） |
 
-#### 利用可能なプラン
-以下の Microsoft 365 プランのアドオンとして利用可能：
-- Microsoft 365 E3/E5
-- Microsoft 365 A5
-- Microsoft 365 F5
-- Microsoft 365 G5
+### ライセンスが必要なユーザー
 
-**重要**: サービスから利益を受ける各ユーザーにライセンスが必要です。
+以下のユーザーにはライセンスが必要です：
 
-### 2. 従量課金制（Pay-As-You-Go / PAYG）モデル
+1. Microsoft Purview ポータルで使用するための Purview ロールが割り当てられたユーザー
+2. Exchange メールボックス、OneDrive アカウント、Teams チャット、デバイスに関連付けられたユーザー（Purview ポリシーや機能が使用される場合）
+3. SharePoint サイト、Microsoft 365 グループ、Teams チャネルメッセージの所有者またはメンバーロールを持つユーザー（訪問者または閲覧専用ロールのユーザーはライセンス不要）
+4. 共有メールボックスまたはリソースメールボックス（特定の機能に必要）
+5. eDiscovery のケースにおける保管者（custodian）
 
-Microsoft 365 以外のワークロード（Azure、AWS、オンプレミスデータ、生成 AI アプリなど）向けに設計されています。
+**注**: 非アクティブなメールボックスにはライセンスは不要です。
 
-#### データガバナンス
+## 従量課金制（Pay-As-You-Go）モデル
 
-**課金メーター**:
-1. **日次ユニーク管理資産**: 統合カタログでアクティブに管理されている資産
-2. **データガバナンス処理ユニット**: データ品質チェックなどのデータヘルス管理実行ごと
+Microsoft 365 以外のワークロード（Azure、AWS、オンプレミスデータ、生成 AI アプリケーションなど）に Microsoft Purview のデータセキュリティ、データガバナンス、データリスク、コンプライアンス保護機能を拡張するための消費ベースの課金モデルです。
 
-**課金対象**:
-- 管理されている資産のみ（単にスキャンされただけで、ガバナンス概念にアタッチされていない資産は課金されません）
+### 前提条件
 
-#### データセキュリティとコンプライアンス（2025年5月開始）
+- Microsoft 365 テナントをアクティブな Azure サブスクリプションに関連付ける必要があります
+- 一部の機能では、従量課金モデルを使用する前にユーザーごとのライセンスモデルの有効化が必要です
 
-AI アプリ、エージェント、転送中のデータ保護に焦点を当てた新しい PAYG メーター：
+### データガバナンス機能
 
-| 機能 | 価格 |
-|------|------|
-| **転送中の保護（Information Protection/DLP）** | $0.50 USD/10,000 リクエスト |
-| **インサイダーリスク管理** | $25.00 USD/10,000 監視イベント |
-| **監査（Audit Standard）** | $15.00 USD/100万監査レコード |
+| ソリューション | 適用範囲 | 測定単位 |
+|-------------|---------|---------|
+| **Unified Catalog データキュレーション** | Microsoft Purview Unified Catalog で技術的資産をアクティブに管理する場合 | 日次ユニーク管理資産数 |
+| **Unified Catalog データヘルス管理** | データ品質を管理し、ヘルス管理アクションを実行する場合 | データガバナンス処理ユニット（DGPU）消費数 |
 
-**特徴**:
-- 変動するワークロードに最適
-- 予測不可能なワークロードに対応
-- ボリュームベースの柔軟な価格設定
+#### データガバナンス処理ユニット（DGPU）
 
-### 3. クラシック Data Map と従来の価格設定
+- 1 DGPU = 60分間のコンピュート時間
+- Basic、Standard、Advanced の3つのパフォーマンスオプション（Basic がデフォルト）
+- 消費量は以下に依存：
+  - データ品質またはヘルス（メタデータ品質）ルールタイプ（標準またはカスタム）
+  - データ量
+  - ソースタイプ
 
-従来の Azure Purview（現在の Microsoft Purview Data Map Classic）:
-- サブスクリプションベースの PAYG モデル
-- よりシンプルな SKU 構成
-- 追加コスト:
-  - プライベートエンドポイント
-  - セルフホスト統合ランタイム
-  - Event Hubs
+**DGPU 生成例（Azure SQL DB, 100万行, Basic SKU）**:
+- 空白チェック: 0.02 DGPU/ルール/実行
+- 正規表現チェック: 0.02 DGPU/ルール/実行
+- テーブルルックアップ: 0.03 DGPU/ルール/実行
+- 一意性チェック: 0.02 DGPU/ルール/実行
+- 重複チェック: 0.02 DGPU/ルール/実行
 
-## SKU の選択ガイド
+### データセキュリティ機能
 
-### ユーザーごとのライセンスが適している場合
-- 小規模組織
-- Microsoft 365 に大きく投資している組織
-- 予測可能なコスト管理を望む場合
+| ソリューション | 適用範囲 | 測定単位 |
+|-------------|---------|---------|
+| **Data Security Investigations（プレビュー）** | 各調査に関連付けられたストレージ | 全調査のストレージGB/月、セキュリティコンピュートユニット消費数 |
+| **Information Protection** | Microsoft 365 以外のデータソースに適用する機密ラベル | 保護ポリシー対象の資産数/日 |
+| **Insider Risk Management** | Microsoft 365 以外の場所でのリスクの高い行動を検出（Cloud および生成 AI ポリシーインジケーター使用時） | データセキュリティ処理ユニット（日次ベース） |
 
-### 従量課金制が適している場合
-- 大企業
-- データ駆動型組織
-- ハイブリッド/マルチクラウド環境
-- AI ワークロードを持つ組織
-- データと複雑性に応じたスケーリングが必要な場合
+### データリスクとコンプライアンス機能（生成 AI アプリとエージェント向け）
 
-## 重要な考慮事項
+**注**: Microsoft 365 Copilot エクスペリエンスは課金されません。
 
-1. **両方のモデルを併用可能**: データ環境とニーズに応じて、ユーザーごとのライセンスと従量課金制を組み合わせて使用できます。
+| ソリューション | 適用範囲 | 測定単位 |
+|-------------|---------|---------|
+| **Audit ソリューション** | Microsoft 以外の生成 AI アプリケーションとのユーザーインタラクションの監査ログ | 処理された監査レコード数 |
+| **Communication Compliance** | Microsoft 365 以外の AI インタラクションでの不適切またはリスクのあるインタラクションを検出（AI ポリシーインジケーター使用時） | スキャンされたテキストレコード数 |
+| **Data Lifecycle Management** | AI インタラクションの保持ポリシー | 保持ポリシー対象の Microsoft 365 以外の Copilot または AI アプリのインタラクション（プロンプトとレスポンス）数 |
+| **eDiscovery** | Microsoft 365 以外の AI アプリケーションデータのストレージと、標準ライセンステナント向け Microsoft Graph API の使用 | ストレージGB/日、エクスポートAPI使用GB/エクスポート |
 
-2. **Azure サブスクリプションとの関連付け**: PAYG サービスを利用するには、M365 テナントを Azure サブスクリプションに関連付ける必要がある場合があります。
+### その他の従量課金ソリューション
 
-3. **ライセンスガイダンス**: コンプライアンスと最適なコスト管理を確保するために、ライセンスガイダンスの確認が重要です。
+| ソリューション | 測定単位 |
+|-------------|---------|
+| **On-demand Classification（プレビュー）** | スキャンごとに分類された資産数 |
+| **Microsoft Security Copilot** | セキュリティコンピュートユニット（SCU） |
+| **Network Data Security（プレビュー）** | エンドポイントデバイスからウェブサイト、クラウドアプリ、生成 AI アプリへのリクエスト数 |
+| **Data Security for Gen AI Applications** | Microsoft 365 以外の AI インタラクション（プロンプト/レスポンス）のリクエストまたはメッセージ数 |
+| **DLP for Cloud Apps in Edge for Business browser** | Edge for Business ブラウザからウェブサイト、クラウドアプリ、生成 AI アプリへのリクエスト数 |
 
-4. **地域別価格**: 価格は地域によって異なる場合があります。
+## 主要機能の SKU 対応表
 
-## 価格計算ツール
+### Audit
 
-最新の価格情報と地域別の詳細については、以下をご利用ください：
-- [Azure Purview Pricing Calculator](https://azure.microsoft.com/en-us/pricing/details/purview/)
+| 機能 | E5 | E3 | E5/A5/G5/F5 Compliance | eDiscovery & Audit |
+|------|----|----|------------------------|-------------------|
+| Audit (Standard) | ✓ | ✓ | ✓ | ✓ |
+| Audit (Premium) | ✓ | ✗ | ✓ | ✓ |
 
-## 参考資料
+### eDiscovery
 
-- [Microsoft Purview Suite 価格](https://www.microsoft.com/en-us/security/business/purview-suite-pricing)
-- [Microsoft Purview サービス説明](https://learn.microsoft.com/en-us/office365/servicedescriptions/microsoft-365-service-descriptions/microsoft-365-tenantlevel-services-licensing-guidance/microsoft-purview-service-description)
-- [Microsoft Purview ライセンスガイダンス](https://www.microsoft.com/licensing/guidance/Microsoft-Purview)
-- [Microsoft Purview Data Governance 課金](https://learn.microsoft.com/en-us/purview/data-governance-billing)
-- [Microsoft Purview 課金モデル](https://learn.microsoft.com/en-us/purview/purview-billing-models)
+| 機能 | E5 | E3 | E5/A5/G5/F5 Compliance | eDiscovery & Audit |
+|------|----|----|------------------------|-------------------|
+| eDiscovery (Standard) | ✓ | ✓ | ✓ | ✓ |
+| eDiscovery (Premium) | ✓ | ✗ | ✓ | ✓ |
+
+### Data Loss Prevention (DLP)
+
+| 機能 | E5/A5/G5 | E3/A3/G3 | E5/F5 Compliance | Info Protection & Governance |
+|------|----------|----------|------------------|------------------------------|
+| DLP (Exchange, SharePoint, OneDrive) | ✓ | ✓ | ✓ | ✓ |
+| DLP for Teams | ✓ | ✗ | ✓ | ✓ |
+| Endpoint DLP | ✓ | ✗ | ✓ | ✓ |
+
+### Information Protection
+
+| 機能 | E5/A5/G5 | E3/A3/G3 | E5/F5 Compliance | Info Protection & Governance |
+|------|----------|----------|------------------|------------------------------|
+| 手動機密ラベル | ✓ | ✓ | ✓ | ✓ |
+| 自動機密ラベル（クライアントおよびサービス側） | ✓ | ✗ | ✓ | ✓ |
+| Advanced Message Encryption | ✓ | ✗ | ✓ | ✓ |
+| Customer Key | ✓ | ✗ | ✓ | ✓ |
+
+### Insider Risk Management & Communication Compliance
+
+| 機能 | E5/A5/G5 | E5/F5 Compliance | Insider Risk Management SKU |
+|------|----------|------------------|----------------------------|
+| Insider Risk Management | ✓ | ✓ | ✓ |
+| Communication Compliance | ✓ | ✓ | ✓ |
+
+## 課金設定
+
+データガバナンス機能を使用するには、Microsoft Purview の従量課金課金の設定が必要です（2025年1月6日より有効）。
+
+## コスト見積もりツール
+
+従量課金機能の価格を理解し、予想される月額コストを見積もる：
+
+- [Microsoft 従量課金価格](https://azure.microsoft.com/pricing/details/purview/)
+- [Microsoft Purview 従量課金機能使用のコスト見積もり](https://azure.microsoft.com/pricing/calculator/)
+
+## 参考資料（Microsoft Learn）
+
+- [Microsoft Purview service description](https://learn.microsoft.com/en-us/office365/servicedescriptions/microsoft-365-service-descriptions/microsoft-365-tenantlevel-services-licensing-guidance/microsoft-purview-service-description)
+- [Learn about Microsoft Purview billing models](https://learn.microsoft.com/en-us/purview/purview-billing-models)
+- [Learn about data governance billing](https://learn.microsoft.com/en-us/purview/data-governance-billing)
+- [Microsoft 365 guidance for security & compliance](https://learn.microsoft.com/en-us/office365/servicedescriptions/microsoft-365-service-descriptions/microsoft-365-tenantlevel-services-licensing-guidance/microsoft-365-security-compliance-licensing-guidance)
 
 ## 将来の統合について
 
@@ -114,4 +164,4 @@ AI アプリ、エージェント、転送中のデータ保護に焦点を当�
 ---
 
 **最終更新日**: 2025年11月16日  
-**情報源**: Microsoft 公式ドキュメント（2025年11月時点）
+**情報源**: Microsoft Learn 公式ドキュメント
