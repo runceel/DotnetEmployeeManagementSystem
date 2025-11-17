@@ -14,35 +14,35 @@ builder.Services.AddMudServices();
 builder.Services.AddHttpClient<IEmployeeApiClient, EmployeeApiClient>("employeeservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint
-    client.BaseAddress = new Uri("http://employeeservice-api");
+    client.BaseAddress = new Uri("http://employeeservice");
 });
 
 // Add HttpClient for DepartmentService with Aspire service discovery
 builder.Services.AddHttpClient<IDepartmentApiClient, DepartmentApiClient>("employeeservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint (same as EmployeeService)
-    client.BaseAddress = new Uri("http://employeeservice-api");
+    client.BaseAddress = new Uri("http://employeeservice");
 });
 
 // Add HttpClient for AuthService with Aspire service discovery
 builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>("authservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint
-    client.BaseAddress = new Uri("http://authservice-api");
+    client.BaseAddress = new Uri("http://authservice");
 });
 
 // Add HttpClient for NotificationService with Aspire service discovery
 builder.Services.AddHttpClient<INotificationApiClient, NotificationApiClient>("notificationservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint
-    client.BaseAddress = new Uri("http://notificationservice-api");
+    client.BaseAddress = new Uri("http://notificationservice");
 });
 
 // Add HttpClient for AttendanceService with Aspire service discovery
 builder.Services.AddHttpClient<IAttendanceApiClient, AttendanceApiClient>("attendanceservice-api", client =>
 {
     // Service discovery will resolve this to the actual endpoint
-    client.BaseAddress = new Uri("http://attendanceservice-api");
+    client.BaseAddress = new Uri("http://attendanceservice");
 });
 
 // Add authentication state management service
