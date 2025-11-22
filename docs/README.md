@@ -91,6 +91,24 @@
   - カスタマイズ方法
   - トラブルシューティング
 
+### AI・MCP統合
+
+- **[MCP統合設計書](mcp-integration-design.md)** - Model Context Protocol統合の設計方針
+  - MCP概要とアーキテクチャ
+  - 技術スタック・SDK選定
+  - 各サービスMCPサーバー実装方針
+  - チャット画面MCPクライアント実装方針
+  - 通信プロトコル・Transport
+  - セキュリティ設計
+  - 実装ロードマップ
+
+- **[MCP実装ガイド](mcp-implementation-guide.md)** - 実践的な開発手順とサンプルコード
+  - 開発環境セットアップ
+  - サービス別MCP実装例
+  - Blazor MCPクライアント実装例
+  - テスト実装
+  - トラブルシューティング
+
 ### ユーザーマニュアル
 
 - **[ユーザーマニュアル](manual/README.md)** - システムの使い方ガイド
@@ -148,6 +166,12 @@
 
 ### システムの用語や権限について知りたい
 → [ユーザーマニュアル - 第11章: 付録](manual/11-appendix.md)
+
+### MCP（Model Context Protocol）による自然言語操作を実装したい
+→ [MCP統合設計書](mcp-integration-design.md) → [MCP実装ガイド](mcp-implementation-guide.md)
+
+### チャット機能でAIアシスタントを追加したい
+→ [MCP統合設計書 - チャット画面MCPクライアント実装方針](mcp-integration-design.md#5-チャット画面mcpクライアント実装方針)
 
 ## 📖 技術スタック
 

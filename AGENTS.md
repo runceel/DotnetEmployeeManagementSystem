@@ -168,6 +168,8 @@ Infrastructure (Data Access)
 | パフォーマンス問題の調査 | [aspire-dashboard.md#パフォーマンス問題の調査](docs/aspire-dashboard.md) |
 | エラーのデバッグ | [aspire-dashboard.md#エラーのデバッグ](docs/aspire-dashboard.md) |
 | 認証機能の実装 | [authorization-implementation.md](docs/authorization-implementation.md) |
+| MCPサーバー・クライアントの実装 | [mcp-integration-design.md](docs/mcp-integration-design.md), [mcp-implementation-guide.md](docs/mcp-implementation-guide.md) |
+| AIチャット機能の追加 | [mcp-integration-design.md#5-チャット画面mcpクライアント実装方針](docs/mcp-integration-design.md) |
 
 ## 🧪 テスト戦略
 
