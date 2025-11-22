@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="McpSample.AppHost/McpSample.AppHost.csproj" />
+  <Project Path="McpSample.ChatWeb/McpSample.ChatWeb.csproj" />
   <Project Path="McpSample.Client/McpSample.Client.csproj" />
   <Project Path="McpSample.Server/McpSample.Server.csproj" />
 </Solution>

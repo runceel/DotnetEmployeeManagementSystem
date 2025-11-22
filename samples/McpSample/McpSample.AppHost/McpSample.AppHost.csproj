@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\McpSample.Server\McpSample.Server.csproj" />
+    <ProjectReference Include="..\McpSample.ChatWeb\McpSample.ChatWeb.csproj" />
   </ItemGroup>
 
 </Project>

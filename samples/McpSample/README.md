@@ -11,6 +11,11 @@ McpSample/
 │   └── Mcp/
 │       └── CalculatorTools.cs  # Sample MCP tools
 ├── McpSample.Client/       # MCP Client (Console app)
+├── McpSample.ChatWeb/      # Blazor Web App with chat interface (MCP Client)
+│   ├── Services/
+│   │   └── McpChatService.cs  # MCP client service for DI
+│   └── Components/Pages/
+│       └── Chat.razor     # Interactive chat UI
 └── McpSample.slnx          # Solution file (XML format)
 ```
 
@@ -23,17 +28,22 @@ McpSample/
 
 ### Option 1: Using Aspire AppHost (Recommended)
 
-Start the AppHost which will launch the MCP server and provide the Aspire dashboard:
+Start the AppHost which will launch both the MCP server and the Blazor chat web app:
 
 ```bash
 dotnet run --project McpSample.AppHost
 ```
 
 The Aspire dashboard will open automatically, showing:
-- MCP Server running on https://localhost:7001
-- Logs and traces from the server
+- **MCP Server** running on https://localhost:7001
+- **Blazor Chat Web App** with interactive UI
+- Logs and traces from both applications
 
-Then in a separate terminal, run the client:
+Navigate to the Blazor Chat Web App URL shown in the Aspire dashboard and click on "MCP Chat" in the navigation menu.
+
+#### Console Client (Optional)
+
+You can also run the console client in a separate terminal:
 
 ```bash
 dotnet run --project McpSample.Client
@@ -136,6 +146,50 @@ Expected error caught: Cannot divide by zero
 ```csharp
 [McpServerToolType]
 public class CalculatorTools
+
+### Blazor Chat Web App (`McpSample.ChatWeb`)
+
+A Blazor Web App with Interactive Server rendering that provides a web-based chat interface for interacting with MCP tools.
+
+**Key Features:**
+- **Global Interactive Server mode** (`@rendermode InteractiveServer`)
+- **Dependency Injection pattern** for MCP client management
+- Service-based architecture with `McpChatService`
+- Real-time chat interface with tool selection
+- Connection management (connect/disconnect)
+- Tool discovery and invocation through UI
+- Error handling and validation
+
+**Architecture:**
+
+```csharp
+// Service Registration (Program.cs)
+builder.Services.AddScoped<McpChatService>();
+
+// Service Usage in Component (Chat.razor)
+@inject McpChatService McpChat
+
+// DI-managed MCP client lifecycle
+await McpChat.ConnectAsync(serverUrl);
+var tools = await McpChat.GetToolsAsync();
+var result = await McpChat.CallToolAsync(toolName, arguments);
+```
+
+**UI Components:**
+1. **Connection Panel**: Configure and connect to MCP server
+2. **Tools List**: Display available tools from connected server
+3. **Chat History**: View conversation and tool execution results
+4. **Tool Execution Panel**: Select tool and provide JSON arguments
+
+**Implementation Highlights:**
+- `McpChatService.cs`: Scoped service managing MCP client lifecycle
+- `Chat.razor`: Interactive Blazor page with `@rendermode InteractiveServer`
+- Proper state management with `StateHasChanged()`
+- JSON argument parsing with validation
+- Real-time UI updates
+
+This demonstrates the **recommended pattern for integrating MCP clients in Blazor applications** using dependency injection for proper service lifecycle management.
+
 {
     [McpServerTool(Description = "Adds two numbers together")]
     public int Add(
