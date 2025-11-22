@@ -40,7 +40,11 @@
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <!-- MCP Packages -->
+    <PackageVersion Include="ModelContextProtocol" Version="0.4.0-preview.3" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="0.4.0-preview.3" />
     <!-- Other Packages -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageVersion Include="MudBlazor" Version="8.14.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="2.9.32" />
