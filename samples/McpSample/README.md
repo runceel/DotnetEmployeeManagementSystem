@@ -10,7 +10,8 @@ McpSample/
 ├── McpSample.Server/       # MCP Server (ASP.NET Core Web API)
 │   └── Mcp/
 │       └── CalculatorTools.cs  # Sample MCP tools
-└── McpSample.Client/       # MCP Client (Console app)
+├── McpSample.Client/       # MCP Client (Console app)
+└── McpSample.slnx          # Solution file (XML format)
 ```
 
 ## Prerequisites
