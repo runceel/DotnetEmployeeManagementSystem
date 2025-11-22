@@ -12,20 +12,16 @@ public static class NotificationEndpoints
             .WithTags("Notifications");
 
         group.MapGet("/", GetAllNotifications)
-            .WithName("GetAllNotifications")
-            .WithOpenApi();
+            .WithName("GetAllNotifications");
 
         group.MapGet("/recent", GetRecentNotifications)
-            .WithName("GetRecentNotifications")
-            .WithOpenApi();
+            .WithName("GetRecentNotifications");
 
         group.MapGet("/{id}", GetNotificationById)
-            .WithName("GetNotificationById")
-            .WithOpenApi();
+            .WithName("GetNotificationById");
 
         group.MapPost("/", CreateNotification)
-            .WithName("CreateNotification")
-            .WithOpenApi();
+            .WithName("CreateNotification");
     }
 
     private static async Task<IResult> GetAllNotifications(
