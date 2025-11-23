@@ -345,6 +345,165 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 }
 ```
 
+## MCP (Model Context Protocol) 機能
+
+### MCPサーバー概要
+
+NotificationServiceは、MCP (Model Context Protocol) サーバーとして機能し、AIアシスタントやLLMベースのアプリケーションから通知機能を利用できます。
+
+**MCPエンドポイント**: `/api/mcp`
+
+### 利用可能なMCPツール
+
+#### 1. GetNotificationsAsync
+通知一覧を取得します。
+
+**パラメータ:**
+- `limit` (int, optional): 取得する通知の最大件数（デフォルト: 50）
+
+**レスポンス例:**
+```json
+{
+  "Notifications": [
+    {
+      "Id": "...",
+      "RecipientEmail": "yamada@example.com",
+      "RecipientName": "山田 太郎",
+      "NotificationType": "EmployeeCreated",
+      "Subject": "ようこそ！従業員登録が完了しました",
+      "Status": "Sent",
+      "CreatedAt": "2025-11-09T10:30:00Z",
+      "SentAt": "2025-11-09T10:30:15Z"
+    }
+  ],
+  "TotalCount": 1
+}
+```
+
+#### 2. GetNotificationByIdAsync
+指定されたIDの通知を取得します。
+
+**パラメータ:**
+- `notificationId` (Guid): 通知ID
+
+#### 3. GetNotificationStatsAsync
+状態別の通知数を取得します。
+
+**レスポンス例:**
+```json
+{
+  "Total": 150,
+  "Pending": 5,
+  "Sent": 140,
+  "Failed": 5
+}
+```
+
+#### 4. CreateNotificationAsync
+新しい通知を作成して送信キューに追加します。
+
+**パラメータ:**
+- `recipientEmail` (string): 受信者のメールアドレス
+- `recipientName` (string): 受信者の名前
+- `subject` (string): 通知の件名
+- `message` (string): 通知メッセージの本文
+
+**使用例:**
+```json
+{
+  "recipientEmail": "tanaka@example.com",
+  "recipientName": "田中 花子",
+  "subject": "システムメンテナンスのお知らせ",
+  "message": "本日21:00からシステムメンテナンスを実施します。"
+}
+```
+
+#### 5. GetNotificationsByRecipientAsync
+指定した受信者の通知一覧を取得します。
+
+**パラメータ:**
+- `recipientEmail` (string): 受信者のメールアドレス
+- `limit` (int, optional): 取得する通知の最大件数（デフォルト: 50）
+
+#### 6. GetNotificationsByTypeAsync
+通知タイプ別に通知を取得します。
+
+**パラメータ:**
+- `notificationType` (string): 通知タイプ（EmployeeCreated, EmployeeUpdated, EmployeeDeleted, Manual, LateArrival, etc.）
+- `limit` (int, optional): 取得する通知の最大件数（デフォルト: 50）
+
+#### 7. GetFailedNotificationsAsync
+送信に失敗した通知の一覧を取得します。
+
+**パラメータ:**
+- `limit` (int, optional): 取得する通知の最大件数（デフォルト: 50）
+
+### MCPクライアントからの利用例
+
+#### C# MCPクライアント
+
+```csharp
+using ModelContextProtocol.Client;
+
+// MCPサーバーに接続
+var transport = new HttpClientTransport(new HttpClientTransportOptions
+{
+    BaseUrl = new Uri("https://localhost:5003/api/mcp")
+});
+
+var client = await McpClient.CreateAsync(transport);
+
+// 利用可能なツールを取得
+var tools = await client.ListToolsAsync();
+foreach (var tool in tools)
+{
+    Console.WriteLine($"- {tool.Name}: {tool.Description}");
+}
+
+// 通知統計を取得
+var statsResult = await client.CallToolAsync("GetNotificationStatsAsync", 
+    new Dictionary<string, object?>());
+
+// 新しい通知を作成
+var createResult = await client.CallToolAsync("CreateNotificationAsync", 
+    new Dictionary<string, object?>
+    {
+        ["recipientEmail"] = "test@example.com",
+        ["recipientName"] = "テスト ユーザー",
+        ["subject"] = "テスト通知",
+        ["message"] = "これはテストメッセージです。"
+    });
+```
+
+#### Blazor / AIチャットアプリからの利用
+
+Blazor WebアプリケーションでMCPクライアントを使用して、自然言語で通知機能を操作できます。
+
+**例:**
+```
+ユーザー: 「最近の通知を10件表示して」
+→ GetNotificationsAsync(limit: 10) 呼び出し
+
+ユーザー: 「yamada@example.com さんへの通知を見せて」
+→ GetNotificationsByRecipientAsync(recipientEmail: "yamada@example.com") 呼び出し
+
+ユーザー: 「送信失敗した通知はある？」
+→ GetFailedNotificationsAsync() 呼び出し
+
+ユーザー: 「tanaka@example.com さんに『会議のお知らせ』という件名でメールを送って」
+→ CreateNotificationAsync(...) 呼び出し
+```
+
+詳細は [MCP統合設計書](mcp-integration-design.md) と [MCP実装ガイド](mcp-implementation-guide.md) を参照してください。
+
+### MCPツール利用時の注意事項
+
+1. **入力検証**: すべてのパラメータは自動的に検証されます。不正な値はエラーを返します。
+2. **エラーハンドリング**: 存在しない通知IDへのアクセスは `InvalidOperationException` をスローします。
+3. **ログ出力**: すべてのMCPツール呼び出しはログに記録され、OpenTelemetryでトレース可能です。
+4. **並行性**: MCPツールは並行呼び出しをサポートしています。
+5. **キャンセル**: `CancellationToken` を使用して長時間実行中の操作をキャンセルできます。
+
 ## カスタマイズ
 
 ### メール送信サービスの置き換え

@@ -74,5 +74,6 @@
     <Project Path="tests/EmployeeService.Application.Tests/EmployeeService.Application.Tests.csproj" />
     <Project Path="tests/EmployeeService.Domain.Tests/EmployeeService.Domain.Tests.csproj" />
     <Project Path="tests/EmployeeService.Integration.Tests/EmployeeService.Integration.Tests.csproj" />
+    <Project Path="tests/NotificationService.Integration.Tests/NotificationService.Integration.Tests.csproj" />
   </Folder>
 </Solution>
