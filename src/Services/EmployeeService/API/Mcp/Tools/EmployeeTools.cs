@@ -13,18 +13,15 @@ public class EmployeeTools
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IDepartmentRepository _departmentRepository;
     private readonly ILogger<EmployeeTools> _logger;
-    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public EmployeeTools(
         IEmployeeRepository employeeRepository,
         IDepartmentRepository departmentRepository,
-        ILogger<EmployeeTools> logger,
-        IHttpContextAccessor httpContextAccessor)
+        ILogger<EmployeeTools> logger)
     {
         _employeeRepository = employeeRepository;
         _departmentRepository = departmentRepository;
         _logger = logger;
-        _httpContextAccessor = httpContextAccessor;
     }
 
     /// <summary>
