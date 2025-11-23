@@ -45,9 +45,10 @@ public class DepartmentTools
             throw new InvalidOperationException($"部署ID {departmentId} が見つかりませんでした。");
         }
 
-        // この部署に所属する従業員数を取得
-        var employees = await _employeeRepository.GetAllAsync();
-        var employeeCount = employees.Count(e => e.DepartmentId == id);
+        // この部署に所属する従業員数を取得（全従業員を取得してフィルタ）
+        // Note: より効率的な実装のためには、リポジトリに GetEmployeeCountByDepartmentIdAsync メソッドを追加することを推奨
+        var allEmployees = await _employeeRepository.GetAllAsync();
+        var employeeCount = allEmployees.Count(e => e.DepartmentId == id);
 
         return new DepartmentDetailResponse(
             Id: department.Id.ToString(),
@@ -67,14 +68,20 @@ public class DepartmentTools
     {
         _logger.LogInformation("MCP Tool: ListDepartments");
 
+        // 部署と従業員を一度に取得してメモリ上でグループ化（効率化）
         var departments = await _departmentRepository.GetAllAsync();
-        var employees = await _employeeRepository.GetAllAsync();
+        var allEmployees = await _employeeRepository.GetAllAsync();
+
+        // 部署ごとの従業員数を事前に計算
+        var employeeCountByDepartment = allEmployees
+            .GroupBy(e => e.DepartmentId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         var departmentList = departments.Select(d => new DepartmentSummary(
             Id: d.Id.ToString(),
             Name: d.Name,
             Description: d.Description,
-            EmployeeCount: employees.Count(e => e.DepartmentId == d.Id)
+            EmployeeCount: employeeCountByDepartment.TryGetValue(d.Id, out var count) ? count : 0
         )).ToList();
 
         return new DepartmentListResponse(
