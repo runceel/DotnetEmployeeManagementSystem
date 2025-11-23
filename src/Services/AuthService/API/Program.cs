@@ -18,6 +18,39 @@ var connectionString = builder.Configuration.GetConnectionString("AuthDb")
 // Infrastructure層のサービスを追加
 builder.Services.AddInfrastructure(connectionString);
 
+// HttpContextAccessor登録（MCPツールで使用）
+builder.Services.AddHttpContextAccessor();
+
+// MCP Server 登録
+builder.Services.AddMcpServer()
+    .WithHttpTransport()           // HTTP/SSE transport有効化
+    .WithToolsFromAssembly();      // 自動的に[McpServerToolType]クラスを検出
+
+// CORS設定（MCP用）
+builder.Services.AddCors(options =>
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        options.AddPolicy("McpPolicy", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+    }
+    else
+    {
+        options.AddPolicy("McpPolicy", policy =>
+        {
+            var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+    }
+});
+
 var app = builder.Build();
 
 // データベース初期化
@@ -32,6 +65,12 @@ if (app.Environment.IsDevelopment())
 app.MapDefaultEndpoints();
 
 app.UseHttpsRedirection();
+
+// CORS有効化
+app.UseCors("McpPolicy");
+
+// MCP エンドポイントマッピング
+app.MapMcp("/api/mcp");
 
 // Map endpoints
 app.MapAuthEndpoints();
