@@ -314,6 +314,166 @@ http://localhost:{port}/openapi/v1.json
 - **OpenTelemetry**: 分散トレーシングとメトリクス収集
 - **構造化ログ**: JSON 形式でログ出力、traceId による追跡
 
+## MCP（Model Context Protocol）連携
+
+AttendanceServiceは、MCP（Model Context Protocol）サーバー機能を実装しており、AI-powered アプリケーションや GitHub Copilot などの MCP クライアントから勤怠管理機能を利用できます。
+
+### MCPエンドポイント
+
+**エンドポイント**: `/api/mcp`  
+**Transport**: HTTP/SSE (Server-Sent Events)
+
+### MCP勤怠管理ツール（AttendanceTools）
+
+#### 1. GetAttendanceAsync
+指定された勤怠記録IDの詳細情報を取得します。
+
+**パラメータ**:
+- `attendanceId` (string): 勤怠記録ID (GUID)
+
+**利用例**: 「勤怠記録 {id} の詳細を表示して」
+
+#### 2. ListAttendancesAsync
+従業員の勤怠記録一覧を取得します。期間を指定して絞り込むことができます。
+
+**パラメータ**:
+- `employeeId` (string): 従業員ID (GUID)
+- `startDate` (string, optional): 開始日 (ISO 8601形式)
+- `endDate` (string, optional): 終了日 (ISO 8601形式)
+
+**利用例**: 「従業員 {id} の2024年1月の勤怠記録を表示して」
+
+#### 3. CheckInAsync
+従業員の出勤を記録します。
+
+**パラメータ**:
+- `employeeId` (string): 従業員ID (GUID)
+- `checkInTime` (string): 出勤時刻 (ISO 8601形式)
+- `attendanceType` (string, optional): 勤怠種別 (Normal, Remote, BusinessTrip, HalfDay)
+- `notes` (string, optional): 備考
+
+**利用例**: 「従業員 {id} の出勤を9時に記録して」
+
+#### 4. CheckOutAsync
+従業員の退勤を記録します。
+
+**パラメータ**:
+- `employeeId` (string): 従業員ID (GUID)
+- `checkOutTime` (string): 退勤時刻 (ISO 8601形式)
+
+**利用例**: 「従業員 {id} の退勤を18時に記録して」
+
+#### 5. GetMonthlySummaryAsync
+従業員の月次勤怠集計を取得します。
+
+**パラメータ**:
+- `employeeId` (string): 従業員ID (GUID)
+- `year` (int): 対象年 (2000-2100)
+- `month` (int): 対象月 (1-12)
+
+**レスポンス内容**:
+- 総出勤日数
+- 総勤務時間
+- 平均勤務時間
+- 遅刻回数（9:00以降の出勤）
+
+**利用例**: 「従業員 {id} の2024年1月の勤怠集計を表示して」
+
+### MCP休暇申請ツール（LeaveRequestTools）
+
+#### 1. GetLeaveRequestAsync
+休暇申請の詳細情報を取得します。
+
+**パラメータ**:
+- `leaveRequestId` (string): 休暇申請ID (GUID)
+
+#### 2. ListLeaveRequestsAsync
+休暇申請一覧を取得します。従業員IDやステータスで絞り込むことができます。
+
+**パラメータ**:
+- `employeeId` (string, optional): 従業員ID (GUID)
+- `status` (string, optional): ステータス (Pending, Approved, Rejected, Cancelled)
+
+**利用例**: 「申請中の休暇申請を全て表示して」
+
+#### 3. CreateLeaveRequestAsync
+新しい休暇申請を作成します。
+
+**パラメータ**:
+- `employeeId` (string): 従業員ID (GUID)
+- `leaveType` (string): 休暇種別 (PaidLeave, SickLeave, SpecialLeave, UnpaidLeave)
+- `startDate` (string): 開始日 (ISO 8601形式)
+- `endDate` (string): 終了日 (ISO 8601形式)
+- `reason` (string): 申請理由
+
+**機能**:
+- 重複する承認済み休暇申請のチェック
+- 休暇日数の自動計算
+
+**利用例**: 「従業員 {id} の有給休暇申請を1月15日から1月17日で作成して、理由は家族旅行」
+
+#### 4. ApproveLeaveRequestAsync
+休暇申請を承認します。
+
+**パラメータ**:
+- `leaveRequestId` (string): 休暇申請ID (GUID)
+- `approverId` (string): 承認者ID (GUID)
+- `comment` (string, optional): 承認者コメント
+
+#### 5. RejectLeaveRequestAsync
+休暇申請を却下します。
+
+**パラメータ**:
+- `leaveRequestId` (string): 休暇申請ID (GUID)
+- `approverId` (string): 承認者ID (GUID)
+- `comment` (string, optional): 却下理由
+
+#### 6. CancelLeaveRequestAsync
+休暇申請をキャンセルします。
+
+**パラメータ**:
+- `leaveRequestId` (string): 休暇申請ID (GUID)
+
+### MCPセキュリティ設定
+
+#### 開発環境
+- CORS: 全オリジン許可
+- 認証: なし（開発用）
+
+#### 本番環境
+- CORS: `appsettings.json` の `AllowedOrigins` で指定されたオリジンのみ許可
+- 認証: JWT Bearer トークン（将来実装予定）
+
+### CORS設定例
+
+```json
+{
+  "AllowedOrigins": [
+    "https://your-blazor-app.azurewebsites.net",
+    "https://your-copilot-client.com"
+  ]
+}
+```
+
+### OpenTelemetry対応
+
+すべてのMCPツール呼び出しは構造化ログとして記録され、分散トレーシングによる追跡が可能です。
+
+```
+MCP Tool: CheckIn - EmployeeId: {EmployeeId}, CheckInTime: {CheckInTime}
+MCP Tool: ListAttendances - EmployeeId: {EmployeeId}, StartDate: {StartDate}, EndDate: {EndDate}
+```
+
+### トラブルシューティング
+
+#### MCPエンドポイントにアクセスできない
+- エンドポイント `/api/mcp` が正しくマッピングされているか確認
+- CORS設定が適切か確認（開発環境では全許可、本番環境では設定必要）
+
+#### ツール呼び出しがエラーになる
+- パラメータ形式が正しいか確認（GUIDはハイフン付き形式、日付はISO 8601形式）
+- ログを確認してエラー詳細を特定
+
 ## 関連ドキュメント
 
 ### 開発
@@ -321,6 +481,8 @@ http://localhost:{port}/openapi/v1.json
 - [開発ガイド](./development-guide.md)
 - [データベース管理](./database.md)
 - [通知サービス](./notification-service.md)
+- [MCP統合設計書](./mcp-integration-design.md)
+- [MCP実装ガイド](./mcp-implementation-guide.md)
 
 ### 本番運用
 - **[本番デプロイメントガイド](./attendance-service-production-deployment.md)** - デプロイ手順と環境設定
