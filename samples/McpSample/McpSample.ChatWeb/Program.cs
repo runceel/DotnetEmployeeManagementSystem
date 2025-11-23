@@ -1,7 +1,14 @@
 using McpSample.ChatWeb.Components;
 using McpSample.ChatWeb.Services;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Bypass SSL certificate validation for development (NOT for production!)
+if (builder.Environment.IsDevelopment())
+{
+    ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

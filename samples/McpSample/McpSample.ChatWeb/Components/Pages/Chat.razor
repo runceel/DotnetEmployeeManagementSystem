@@ -14,7 +14,7 @@
         <div class="card p-4 mb-3">
             <h5>Connect to MCP Server</h5>
             <div class="input-group">
-                <input class="form-control" @bind="serverUrl" placeholder="https://localhost:7001/api/mcp" />
+                <input class="form-control" @bind="serverUrl" placeholder="http://localhost:7001/api/mcp" />
                 <button class="btn btn-primary" @onclick="ConnectAsync" disabled="@isConnecting">
                     @if (isConnecting)
                     {
@@ -109,7 +109,7 @@
 </div>
 
 @code {
-    private string serverUrl = "https://localhost:7001/api/mcp";
+    private string serverUrl = "http://localhost:7001/api/mcp";
     private bool isConnecting;
     private bool isSending;
     private string? connectionError;
@@ -201,7 +201,10 @@
 
             // Add response
             var responseText = result.Content.Count > 0 
-                ? string.Join("\n", result.Content.Select(c => c.ToString())) 
+                ? string.Join("\n", result.Content.Select(c => 
+                    c is ModelContextProtocol.Protocol.TextContentBlock textBlock 
+                        ? textBlock.Text 
+                        : c.ToString())) 
                 : "No response";
             
             chatHistory.Add(new ChatMessage { Text = responseText, IsUser = false });
