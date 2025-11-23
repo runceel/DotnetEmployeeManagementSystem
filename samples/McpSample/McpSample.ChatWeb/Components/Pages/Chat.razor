@@ -1,0 +1,232 @@
+@page "/chat"
+@rendermode InteractiveServer
+@using McpSample.ChatWeb.Services
+@inject McpChatService McpChat
+@inject ILogger<Chat> Logger
+
+<PageTitle>MCP Chat</PageTitle>
+
+<div class="container mt-4">
+    <h3>MCP Chat Interface</h3>
+
+    @if (!McpChat.IsConnected)
+    {
+        <div class="card p-4 mb-3">
+            <h5>Connect to MCP Server</h5>
+            <div class="input-group">
+                <input class="form-control" @bind="serverUrl" placeholder="http://localhost:7001/api/mcp" />
+                <button class="btn btn-primary" @onclick="ConnectAsync" disabled="@isConnecting">
+                    @if (isConnecting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Connect
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(connectionError))
+            {
+                <div class="alert alert-danger mt-2">@connectionError</div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success mb-3">
+            Connected to MCP Server
+            <button class="btn btn-sm btn-outline-secondary float-end" @onclick="Disconnect">Disconnect</button>
+        </div>
+
+        @if (availableTools != null && availableTools.Any())
+        {
+            <div class="card p-3 mb-3">
+                <h5>Available Tools</h5>
+                <ul class="list-group">
+                    @foreach (var tool in availableTools)
+                    {
+                        <li class="list-group-item">
+                            <strong>@tool.Name</strong>: @tool.Description
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="card p-3 mb-3">
+            <h5>Chat History</h5>
+            <div class="chat-messages" style="max-height: 400px; overflow-y: auto;">
+                @foreach (var message in chatHistory)
+                {
+                    <div class="mb-2 @(message.IsUser ? "text-end" : "")">
+                        <div class="d-inline-block p-2 rounded @(message.IsUser ? "bg-primary text-white" : "bg-light")">
+                            <small class="d-block fw-bold">@(message.IsUser ? "You" : "MCP")</small>
+                            @message.Text
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card p-3">
+            <h5>Send Message</h5>
+            <div class="mb-3">
+                <label class="form-label">Tool Name</label>
+                <select class="form-select" @bind="selectedTool">
+                    <option value="">-- Select a tool --</option>
+                    @if (availableTools != null)
+                    {
+                        @foreach (var tool in availableTools)
+                        {
+                            <option value="@tool.Name">@tool.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            @if (!string.IsNullOrEmpty(selectedTool))
+            {
+                <div class="mb-3">
+                    <label class="form-label">Arguments (JSON format)</label>
+                    <textarea class="form-control" rows="3" @bind="toolArguments" 
+                              placeholder='{"a": 5, "b": 3}'></textarea>
+                    <small class="form-text text-muted">Example: {"a": 5, "b": 3}</small>
+                </div>
+            }
+
+            <button class="btn btn-success" @onclick="SendMessageAsync" disabled="@(isSending || string.IsNullOrEmpty(selectedTool))">
+                @if (isSending)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Execute Tool
+            </button>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-2">@errorMessage</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string serverUrl = "http://localhost:7001/api/mcp";
+    private bool isConnecting;
+    private bool isSending;
+    private string? connectionError;
+    private string? errorMessage;
+    private List<ChatMessage> chatHistory = new();
+    private IList<ModelContextProtocol.Client.McpClientTool>? availableTools;
+    private string selectedTool = string.Empty;
+    private string toolArguments = string.Empty;
+
+    private async Task ConnectAsync()
+    {
+        isConnecting = true;
+        connectionError = null;
+        StateHasChanged();
+
+        try
+        {
+            var success = await McpChat.ConnectAsync(serverUrl);
+            if (success)
+            {
+                availableTools = await McpChat.GetToolsAsync();
+                chatHistory.Add(new ChatMessage { Text = $"Connected to {serverUrl}", IsUser = false });
+            }
+            else
+            {
+                connectionError = "Failed to connect to MCP server";
+            }
+        }
+        catch (Exception ex)
+        {
+            connectionError = $"Error: {ex.Message}";
+            Logger.LogError(ex, "Connection error");
+        }
+        finally
+        {
+            isConnecting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Disconnect()
+    {
+        McpChat.Disconnect();
+        availableTools = null;
+        chatHistory.Clear();
+        selectedTool = string.Empty;
+        toolArguments = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrEmpty(selectedTool))
+            return;
+
+        isSending = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Parse arguments
+            var arguments = new Dictionary<string, object?>();
+            if (!string.IsNullOrWhiteSpace(toolArguments))
+            {
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(toolArguments);
+                foreach (var prop in jsonDoc.RootElement.EnumerateObject())
+                {
+                    arguments[prop.Name] = prop.Value.ValueKind switch
+                    {
+                        System.Text.Json.JsonValueKind.Number => prop.Value.GetDouble(),
+                        System.Text.Json.JsonValueKind.String => prop.Value.GetString(),
+                        System.Text.Json.JsonValueKind.True => true,
+                        System.Text.Json.JsonValueKind.False => false,
+                        _ => prop.Value.ToString()
+                    };
+                }
+            }
+
+            // Add user message
+            chatHistory.Add(new ChatMessage 
+            { 
+                Text = $"Execute {selectedTool}({System.Text.Json.JsonSerializer.Serialize(arguments)})", 
+                IsUser = true 
+            });
+
+            // Call tool
+            var result = await McpChat.CallToolAsync(selectedTool, arguments);
+
+            // Add response
+            var responseText = result.Content.Count > 0 
+                ? string.Join("\n", result.Content.Select(c => 
+                    c is ModelContextProtocol.Protocol.TextContentBlock textBlock 
+                        ? textBlock.Text 
+                        : c.ToString())) 
+                : "No response";
+            
+            chatHistory.Add(new ChatMessage { Text = responseText, IsUser = false });
+
+            // Clear inputs
+            toolArguments = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+            Logger.LogError(ex, "Error calling tool");
+        }
+        finally
+        {
+            isSending = false;
+            StateHasChanged();
+        }
+    }
+
+    private class ChatMessage
+    {
+        public string Text { get; set; } = string.Empty;
+        public bool IsUser { get; set; }
+    }
+}
