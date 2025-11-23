@@ -14,6 +14,9 @@ public class AttendanceTools
     private readonly IAttendanceRepository _attendanceRepository;
     private readonly ILogger<AttendanceTools> _logger;
 
+    private const int LateThresholdHour = 9;
+    private const int LateThresholdMinute = 0;
+
     public AttendanceTools(
         IAttendanceRepository attendanceRepository,
         ILogger<AttendanceTools> logger)
@@ -271,7 +274,7 @@ public class AttendanceTools
         var averageWorkHours = totalWorkDays > 0 ? totalWorkHours / totalWorkDays : 0;
         var lateDays = attendanceList.Count(a =>
             a.CheckInTime.HasValue &&
-            a.CheckInTime.Value.TimeOfDay > new TimeSpan(9, 0, 0));
+            a.CheckInTime.Value.TimeOfDay > new TimeSpan(LateThresholdHour, LateThresholdMinute, 0));
 
         return new MonthlySummaryResponse(
             EmployeeId: empId.ToString(),
