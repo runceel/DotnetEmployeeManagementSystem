@@ -33,9 +33,15 @@ builder.Services.AddCors(options =>
     {
         options.AddPolicy("McpPolicy", policy =>
         {
-            policy.AllowAnyOrigin()
+            // 開発環境でも特定のオリジンのみ許可
+            policy.WithOrigins(
+                      "http://localhost:3000",
+                      "https://localhost:3001",
+                      "http://localhost:5000",
+                      "https://localhost:5001")
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
     }
     else
