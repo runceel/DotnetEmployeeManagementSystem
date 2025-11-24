@@ -1,4 +1,5 @@
 using BlazorWeb.Components;
+using BlazorWeb.Models;
 using BlazorWeb.Services;
 using MudBlazor.Services;
 
@@ -6,6 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
+
+// Configure MCP options
+builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
@@ -47,6 +51,9 @@ builder.Services.AddHttpClient<IAttendanceApiClient, AttendanceApiClient>("atten
 
 // Add authentication state management service
 builder.Services.AddScoped<AuthStateService>();
+
+// Add MCP chat service
+builder.Services.AddScoped<McpChatService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
