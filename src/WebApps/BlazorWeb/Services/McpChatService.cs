@@ -253,6 +253,7 @@ public sealed class McpChatService : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // Clear all connections (McpClient doesn't implement IDisposable)
         _connectedClients.Clear();
         _serverTools.Clear();
         ActivitySource.Dispose();

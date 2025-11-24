@@ -139,7 +139,10 @@
                                 @if (!string.IsNullOrEmpty(_selectedServerName))
                                 {
                                     var server = McpChatService.AvailableServers.FirstOrDefault(s => s.Name == _selectedServerName);
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@server?.DisplayName</MudChip>
+                                    @if (server != null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@server.DisplayName</MudChip>
+                                    }
                                 }
                             </MudText>
                         </CardHeaderContent>
