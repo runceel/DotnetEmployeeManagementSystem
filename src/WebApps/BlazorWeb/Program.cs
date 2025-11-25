@@ -8,6 +8,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
+// Add Ollama client with Aspire service discovery
+builder.AddOllamaApiClient("ollama");
+
 // Configure MCP options
 builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));
 
@@ -54,6 +57,9 @@ builder.Services.AddScoped<AuthStateService>();
 
 // Add MCP chat service
 builder.Services.AddScoped<McpChatService>();
+
+// Add AI chat service (uses Ollama via Aspire)
+builder.Services.AddScoped<AiChatService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

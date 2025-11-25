@@ -3,6 +3,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Add Redis for messaging
 var redis = builder.AddRedis("redis");
 
+// Add Ollama with phi3 model for local AI chat
+var ollama = builder.AddOllama("ollama")
+    .WithDataVolume()
+    .WithOpenWebUI()
+    .AddModel("phi3");
+
 // Add SQLite databases
 var employeeDb = builder.AddSqlite("employeedb");
 var authDb = builder.AddSqlite("authdb");
@@ -37,6 +43,7 @@ builder.AddProject<Projects.BlazorWeb>("blazorweb")
     .WithReference(employeeServiceApi)
     .WithReference(authServiceApi)
     .WithReference(notificationServiceApi)
-    .WithReference(attendanceServiceApi);
+    .WithReference(attendanceServiceApi)
+    .WithReference(ollama);
 
 builder.Build().Run();

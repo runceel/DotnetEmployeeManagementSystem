@@ -8,6 +8,9 @@
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.0.0" />
     <PackageVersion Include="Aspire.StackExchange.Redis" Version="13.0.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.9.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="9.9.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.OllamaSharp" Version="9.9.0" />
+    <PackageVersion Include="OllamaSharp" Version="5.4.11" />
     <!-- ASP.NET Core Packages -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />

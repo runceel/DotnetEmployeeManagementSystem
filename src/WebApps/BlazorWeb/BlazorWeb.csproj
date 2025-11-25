@@ -8,6 +8,8 @@
   <ItemGroup>
     <PackageReference Include="MudBlazor" />
     <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="CommunityToolkit.Aspire.OllamaSharp" />
+    <PackageReference Include="OllamaSharp" />
   </ItemGroup>
 
   <PropertyGroup>

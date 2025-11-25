@@ -4,412 +4,385 @@ This guide explains how to set up and test the MCP Chat feature locally using Ol
 
 ## Overview
 
-The MCP Chat feature can be enhanced with local AI capabilities using:
-- **Ollama**: Local LLM runtime
-- **SLM Models**: Small Language Models (e.g., Phi-3, Llama3.2)
-- **MCP Protocol**: Model Context Protocol for tool integration
+The MCP Chat feature is enhanced with local AI capabilities using:
+- **Aspire Ollama Integration**: Automatically starts Ollama when running AppHost
+- **Open WebUI**: Browser-based interface for Ollama included
+- **phi3 Model**: Pre-configured small language model for quick testing
+- **OllamaSharp Client**: .NET integration for AI-powered features
 
 ## Prerequisites
 
-### 1. Install Ollama
+### 1. Docker Required
 
-**macOS/Linux:**
+Ollama runs as a Docker container in Aspire. Ensure Docker is installed and running:
+
+**Check Docker:**
 ```bash
-curl -fsSL https://ollama.com/install.sh | sh
+docker --version
+docker info
 ```
 
-**Windows:**
-Download from [ollama.com](https://ollama.com/download)
+**Install Docker (if needed):**
+- **Windows**: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- **macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- **Linux**: [Docker Engine](https://docs.docker.com/engine/install/)
 
-**Verify installation:**
-```bash
-ollama --version
-```
+## Quick Start with Aspire
 
-### 2. Pull a Small Language Model
+### 1. Start Aspire AppHost
 
-Choose a model based on your hardware:
-
-**For 8GB RAM (Recommended for testing):**
-```bash
-# Phi-3 Mini (3.8B parameters, ~2.3GB)
-ollama pull phi3
-
-# or Llama 3.2 (3B parameters)
-ollama pull llama3.2:3b
-```
-
-**For 16GB+ RAM:**
-```bash
-# Llama 3.2 (8B parameters)
-ollama pull llama3.2
-
-# or Gemma 2 (9B parameters)
-ollama pull gemma2:9b
-```
-
-**List installed models:**
-```bash
-ollama list
-```
-
-### 3. Install Playwright (for screenshots)
-
-```bash
-# Install Playwright
-pip install playwright
-
-# Install browsers
-playwright install chromium
-```
-
-## Setup Steps
-
-### 1. Start Ollama Server
-
-```bash
-# Start Ollama (runs on http://localhost:11434 by default)
-ollama serve
-```
-
-**Verify Ollama is running:**
-```bash
-curl http://localhost:11434/api/tags
-```
-
-### 2. Test Ollama with a Simple Query
-
-```bash
-ollama run phi3 "What is the MCP protocol?"
-```
-
-### 3. Start the Employee Management System
+Simply start the Aspire application - Ollama will start automatically:
 
 ```bash
 cd /path/to/DotnetEmployeeManagementSystem
-
-# Start Aspire AppHost
 dotnet run --project src/AppHost
 ```
 
-**Note the URLs from Aspire Dashboard:**
-- Dashboard: `http://localhost:15XXX`
-- BlazorWeb: `http://localhost:5XXX`
+### 2. What Gets Started Automatically
 
-### 4. Access MCP Chat
+When you run `dotnet run --project src/AppHost`, the following happens:
 
-1. Open BlazorWeb URL in browser
-2. Navigate to **MCPチャット** (MCP Chat)
-3. Click **全サービスに接続** (Connect to All Services)
+| Service | Description | Access |
+|---------|-------------|--------|
+| **Ollama** | Local LLM server (Docker container) | http://localhost:11434 |
+| **Open WebUI** | Browser-based chat interface | http://localhost:8080 |
+| **phi3 Model** | Pre-downloaded SLM (3.8B params) | Automatically available |
+| **BlazorWeb** | Main application with AI integration | See Aspire dashboard |
 
-## Using AI Chat with MCP
+### 3. Access Aspire Dashboard
 
-### Scenario 1: AI-Assisted Tool Discovery
+Open the Aspire dashboard URL shown in the console (e.g., `http://localhost:15000`) to:
+- View all running services
+- Access Ollama and Open WebUI endpoints
+- Monitor health and logs
 
-**Ask Ollama to help understand MCP tools:**
+### 4. Test with Open WebUI
 
-```bash
-ollama run phi3 "Based on these MCP tools: ListEmployeesAsync, GetEmployeeAsync, CreateEmployeeAsync, UpdateEmployeeAsync, DeleteEmployeeAsync. Generate a JSON query to get employee with ID 123e4567-e89b-12d3-a456-426614174000"
+1. Find "ollama-openwebui" in the Aspire dashboard
+2. Click on the endpoint URL
+3. Create an account (local only)
+4. Start chatting with phi3 model
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       Aspire AppHost                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐ │
+│  │   Ollama    │    │ Open WebUI  │    │      BlazorWeb      │ │
+│  │  (Docker)   │◄───│  (Docker)   │    │  (with AiChatService)│ │
+│  │             │    │             │    │                     │ │
+│  │  phi3 model │    │ Chat UI     │    │ MCP Chat + AI       │ │
+│  └─────────────┘    └─────────────┘    └─────────────────────┘ │
+│         │                                        │              │
+│         └────────────────────────────────────────┘              │
+│                     OllamaSharp Client                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Expected Response:**
-```json
+## BlazorWeb AI Integration
+
+The BlazorWeb application includes an `AiChatService` that uses Ollama for:
+
+### Available Features
+
+1. **AI-Assisted MCP Tool Arguments**
+   - Generate JSON arguments for MCP tools
+   - Natural language to structured data conversion
+
+2. **Model Availability Check**
+   - Verify Ollama connection
+   - Check if required models are ready
+
+3. **Text Generation**
+   - Generate responses from prompts
+   - Stream responses in real-time
+
+4. **Model Listing**
+   - List available local models
+   - Check model capabilities
+
+### Usage in Code
+
+```csharp
+// Inject AiChatService
+@inject AiChatService AiChat
+
+// Check if Ollama is available
+var isAvailable = await AiChat.IsAvailableAsync();
+
+// Generate MCP tool arguments
+var arguments = await AiChat.GenerateMcpToolArgumentsAsync(
+    "CreateEmployeeAsync",
+    "Create a new employee with the specified details",
+    "Create an employee named John Doe, email john@example.com"
+);
+// Returns: {"firstName":"John","lastName":"Doe","email":"john@example.com",...}
+
+// Generate text
+var response = await AiChat.GenerateAsync("Explain what MCP protocol is");
+
+// Stream response
+await foreach (var chunk in AiChat.GenerateStreamAsync("Tell me about .NET Aspire"))
 {
-  "employeeId": "123e4567-e89b-12d3-a456-426614174000"
+    Console.Write(chunk);
 }
+
+// List models
+var models = await AiChat.ListModelsAsync();
 ```
 
-### Scenario 2: AI-Generated Test Data
+## Configuration Details
 
-**Ask Ollama to generate test employee data:**
+### AppHost Configuration
 
-```bash
-ollama run phi3 "Generate a JSON object for creating a new employee with fields: firstName, lastName, email, departmentId (use a UUID), position, and hireDate (use 2024-01-15)"
+The Ollama integration is configured in `src/AppHost/AppHost.cs`:
+
+```csharp
+// Add Ollama with phi3 model for local AI chat
+var ollama = builder.AddOllama("ollama")
+    .WithDataVolume()        // Persist model data
+    .WithOpenWebUI()         // Include browser UI
+    .AddModel("phi3");       // Download phi3 model
+
+// Reference Ollama in BlazorWeb
+builder.AddProject<Projects.BlazorWeb>("blazorweb")
+    .WithReference(ollama);  // Auto-configure connection
 ```
 
-**Expected Response:**
+### Service Configuration
+
+BlazorWeb automatically configures the Ollama client via Aspire service discovery:
+
+```csharp
+// Program.cs
+builder.AddOllamaApiClient("ollama");  // Auto-configured via Aspire
+builder.Services.AddScoped<AiChatService>();
+```
+
+## Available Models
+
+### Default: phi3 (Recommended)
+
+| Property | Value |
+|----------|-------|
+| **Name** | phi3 |
+| **Parameters** | 3.8B |
+| **Size** | ~2.3GB |
+| **RAM Required** | 8GB |
+| **Speed** | Fast |
+| **Use Case** | JSON generation, code assistance |
+
+### Adding More Models
+
+To add additional models, modify `AppHost.cs`:
+
+```csharp
+var ollama = builder.AddOllama("ollama")
+    .WithDataVolume()
+    .WithOpenWebUI()
+    .AddModel("phi3")
+    .AddModel("llama3.2:3b")    // Add Llama 3.2 (3B)
+    .AddModel("gemma2:9b");     // Add Gemma 2 (9B)
+```
+
+### Model Recommendations
+
+| Model | Size | RAM | Speed | Best For |
+|-------|------|-----|-------|----------|
+| **phi3** | 3.8B | 8GB | ⚡⚡⚡ | Quick testing, JSON |
+| **llama3.2:3b** | 3B | 8GB | ⚡⚡⚡ | General use |
+| **llama3.2** | 8B | 16GB | ⚡⚡ | Complex queries |
+| **gemma2:9b** | 9B | 16GB | ⚡⚡ | High accuracy |
+
+## Using AI with MCP Chat
+
+### Scenario 1: Generate Tool Arguments
+
+When in MCP Chat, use the AI to generate tool arguments:
+
+**User Request**: "Create an employee named Jane Smith, email jane@company.com, position Senior Developer"
+
+**AI Generated JSON**:
 ```json
 {
-  "firstName": "John",
+  "firstName": "Jane",
   "lastName": "Smith",
-  "email": "john.smith@example.com",
-  "departmentId": "456e7890-e89b-12d3-a456-426614174010",
-  "position": "Software Engineer",
-  "hireDate": "2024-01-15"
+  "email": "jane@company.com",
+  "position": "Senior Developer",
+  "departmentId": "00000000-0000-0000-0000-000000000000",
+  "hireDate": "2024-11-25"
 }
 ```
 
-### Scenario 3: AI Query Translation
+### Scenario 2: Understand Tool Descriptions
 
-**Convert natural language to MCP tool calls:**
+Ask the AI to explain what an MCP tool does:
 
-```bash
-ollama run phi3 "Convert this request to an MCP tool call: 'Get all employees from the engineering department'. Available tools: ListEmployeesAsync (no args), SearchEmployeeByEmailAsync (email), GetEmployeeAsync (employeeId)"
-```
+**Prompt**: "What parameters does GetEmployeeAsync need?"
 
-**Expected Response:**
-```
-Tool: ListEmployeesAsync
-Arguments: {}
-Note: Then filter by department='Engineering' in the client
-```
+**AI Response**: "The GetEmployeeAsync tool requires an 'employeeId' parameter as a GUID string to retrieve a specific employee's information."
 
-## Automated Screenshot Capture
+### Scenario 3: Validate JSON Format
 
-### Using the Playwright Script
+Ask the AI to check your JSON:
 
-```bash
-# Capture screenshots automatically
-python3 .github/scripts/capture-mcp-screenshots.py http://localhost:5001
-```
+**Prompt**: "Is this valid JSON? {firstName: John}"
 
-**Output Location:**
-`.github/issue-reports/screenshots/`
+**AI Response**: "No, JSON requires double quotes around property names. The correct format is: {\"firstName\": \"John\"}"
 
-**Generated Screenshots:**
-- `01-home-page.png` - Initial landing page
-- `02-mcp-chat-initial.png` - MCP Chat page
-- `03-before-connection.png` - Pre-connection state
-- `04-connecting.png` - Connection in progress
-- `05-connected.png` - All services connected
-- `06-employee-service-selected.png` - Employee service selected
-- `07-tool-list.png` - Available tools displayed
-- `08-tool-execution.png` - Tool being executed
-- `09-chat-results.png` - Execution results in chat
-- `10-help-guide.png` - Help guide expanded
+## Open WebUI Features
 
-### Manual Screenshot Workflow
+The included Open WebUI provides:
 
-If automated capture doesn't work:
+- 📝 **Chat Interface**: Direct conversation with Ollama models
+- 📚 **Model Management**: Download/delete models
+- ⚙️ **Settings**: Adjust temperature, context size
+- 📊 **History**: Save and review conversations
+- 🔄 **Multi-Model**: Switch between models easily
 
-1. Open browser DevTools (F12)
-2. Set viewport to 1920x1080
-3. Navigate through the MCP Chat workflow
-4. Use browser screenshot: Ctrl+Shift+I → ... → Capture screenshot
+### Access Open WebUI
 
-## AI-Enhanced Testing Workflow
-
-### Complete Test Flow with AI Assistance
-
-```bash
-# 1. Start services
-dotnet run --project src/AppHost &
-ASPIRE_PID=$!
-
-# 2. Wait for services to be ready
-sleep 30
-
-# 3. Get BlazorWeb URL from Aspire dashboard (manual step)
-BLAZOR_URL="http://localhost:5001"
-
-# 4. Use AI to generate test scenarios
-ollama run phi3 "Generate 5 test scenarios for an employee management MCP API with tools: ListEmployeesAsync, GetEmployeeAsync, CreateEmployeeAsync"
-
-# 5. Capture screenshots
-python3 .github/scripts/capture-mcp-screenshots.py $BLAZOR_URL
-
-# 6. Clean up
-kill $ASPIRE_PID
-```
-
-## Advanced: Building an AI Chat Bot for MCP
-
-### Concept: Local AI Assistant for MCP Tools
-
-Create a simple Python script that uses Ollama to interact with MCP:
-
-```python
-#!/usr/bin/env python3
-"""Simple AI assistant for MCP Chat"""
-
-import requests
-import json
-
-def ask_ollama(prompt, model="phi3"):
-    """Query Ollama for assistance."""
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": model,
-            "prompt": prompt,
-            "stream": False
-        }
-    )
-    return response.json()["response"]
-
-# Example: Generate tool arguments
-prompt = """
-Given this MCP tool:
-Tool: CreateEmployeeAsync
-Parameters: firstName, lastName, email, departmentId (GUID), position, hireDate (ISO 8601)
-
-Generate valid JSON arguments to create an employee named "Jane Doe", 
-email "jane.doe@example.com", position "Senior Engineer", hired on 2024-06-01.
-Use a random GUID for departmentId.
-
-Return only the JSON object, no explanation.
-"""
-
-result = ask_ollama(prompt)
-print("AI Generated Arguments:")
-print(result)
-```
-
-**Save as:** `.github/scripts/ai-mcp-assistant.py`
-
-**Usage:**
-```bash
-python3 .github/scripts/ai-mcp-assistant.py
-```
-
-## Ollama Model Recommendations
-
-### Best Models for MCP Testing
-
-| Model | Size | RAM | Speed | Accuracy | Use Case |
-|-------|------|-----|-------|----------|----------|
-| **phi3** | 3.8B | 8GB | ⚡⚡⚡ | ⭐⭐⭐ | Quick testing, JSON generation |
-| **llama3.2:3b** | 3B | 8GB | ⚡⚡⚡ | ⭐⭐⭐⭐ | Balanced performance |
-| **llama3.2** | 8B | 16GB | ⚡⚡ | ⭐⭐⭐⭐⭐ | Complex queries |
-| **gemma2:9b** | 9B | 16GB | ⚡⚡ | ⭐⭐⭐⭐⭐ | High accuracy needed |
-
-### Testing Model Performance
-
-```bash
-# Test JSON generation speed
-time ollama run phi3 "Generate a JSON object with fields: id (UUID), name, email, active (boolean)"
-
-# Compare models
-for model in phi3 llama3.2:3b llama3.2; do
-  echo "Testing $model..."
-  time ollama run $model "What is MCP protocol?" > /dev/null
-done
-```
+1. Start Aspire AppHost
+2. Find "ollama-openwebui" in dashboard
+3. Click endpoint URL
+4. First time: Create local account
+5. Select phi3 model and start chatting
 
 ## Troubleshooting
 
-### Ollama Not Running
+### Docker Not Running
 
 ```bash
-# Check if Ollama is running
-ps aux | grep ollama
+# Check Docker status
+docker info
 
-# Restart Ollama
-pkill ollama
-ollama serve
+# Start Docker
+# Windows/macOS: Open Docker Desktop
+# Linux: sudo systemctl start docker
 ```
+
+### Model Download Slow
+
+Models are downloaded on first run. The phi3 model (~2.3GB) may take a few minutes:
+
+```bash
+# Check download progress in Aspire dashboard logs
+# Or use docker logs:
+docker logs <ollama-container-id>
+```
+
+### Memory Issues
+
+If you experience slowness or crashes:
+
+```bash
+# Check available memory
+free -h  # Linux
+# or check Docker Desktop resources
+
+# Use smaller models if needed
+# Minimum 8GB RAM recommended for phi3
+```
+
+### Connection Refused
+
+If BlazorWeb can't connect to Ollama:
+
+1. Check Ollama container is running in Aspire dashboard
+2. Verify Ollama endpoint in dashboard resources
+3. Check container logs for errors
 
 ### Model Not Found
 
-```bash
-# List available models
-ollama list
+If "phi3" model isn't available:
 
-# Pull missing model
-ollama pull phi3
+```bash
+# The model should auto-download, but you can manually pull:
+docker exec <ollama-container-id> ollama pull phi3
 ```
 
-### Playwright Screenshot Fails
+## Performance Tips
 
-```bash
-# Reinstall Playwright browsers
-playwright install --force chromium
+### 1. Use Data Volume
 
-# Check if BlazorWeb is accessible
-curl -I http://localhost:5001
+The `WithDataVolume()` option persists model data between runs:
+
+```csharp
+builder.AddOllama("ollama")
+    .WithDataVolume()  // Models persist, no re-download
 ```
 
-### Aspire Services Not Starting
+### 2. GPU Acceleration
 
-```bash
-# Check logs
-dotnet run --project src/AppHost
+If you have a GPU, Ollama will automatically use it for faster inference.
 
-# Verify all services are running in Aspire dashboard
-# Look for green status indicators
-```
+### 3. Adjust Context Size
 
-## Performance Optimization
+For longer conversations, increase context in Open WebUI settings.
 
-### 1. Use Smaller Models for Faster Responses
+### 4. Use Streaming
 
-```bash
-# Phi-3 is fastest for simple JSON tasks
-ollama pull phi3
+For responsive UIs, use streaming responses:
 
-# Use quantized models for lower memory
-ollama pull llama3.2:3b-q4_0
-```
-
-### 2. Enable GPU Acceleration (if available)
-
-Ollama automatically uses GPU if available (CUDA, Metal, ROCm).
-
-**Check GPU usage:**
-```bash
-# macOS
-sudo powermetrics --samplers gpu_power
-
-# Linux with NVIDIA
-nvidia-smi
-
-# Windows
-Task Manager > Performance > GPU
-```
-
-### 3. Adjust Context Window
-
-```bash
-ollama run phi3 --context-size 2048 "Your prompt here"
+```csharp
+await foreach (var chunk in AiChat.GenerateStreamAsync(prompt))
+{
+    // Update UI incrementally
+}
 ```
 
 ## Security Considerations
 
-### Running Ollama Locally
+### Local Execution
 
-- ✅ All data stays on your machine
-- ✅ No external API calls
-- ✅ Full privacy and control
-- ✅ Works offline
+- ✅ All AI processing happens locally
+- ✅ No data sent to external APIs
+- ✅ Complete privacy control
+- ✅ Works offline after model download
 
-### MCP Chat Testing
+### Docker Isolation
 
-- ⚠️ Use test data only
-- ⚠️ Don't expose production endpoints
-- ⚠️ Review generated JSON before execution
-- ⚠️ Validate AI-generated GUIDs
+- ✅ Ollama runs in isolated container
+- ✅ No host system access by default
+- ✅ Network isolated to Aspire network
+
+### Production Notes
+
+- ⚠️ Disable Open WebUI in production
+- ⚠️ Consider authentication for Ollama
+- ⚠️ Monitor resource usage
 
 ## Resources
 
 ### Official Documentation
 
-- **Ollama**: https://ollama.com/
-- **Model Context Protocol**: https://modelcontextprotocol.io/
-- **Playwright**: https://playwright.dev/python/
+- **Aspire Ollama Extension**: [CommunityToolkit.Aspire](https://github.com/CommunityToolkit/Aspire)
+- **Ollama**: [ollama.com](https://ollama.com/)
+- **OllamaSharp**: [GitHub](https://github.com/awaescher/OllamaSharp)
+- **Open WebUI**: [GitHub](https://github.com/open-webui/open-webui)
 
-### Recommended Reading
+### Model Information
 
+- [phi3 Technical Report](https://arxiv.org/abs/2404.14219)
 - [Ollama Model Library](https://ollama.com/library)
-- [MCP Specification](https://spec.modelcontextprotocol.io/)
-- [Phi-3 Technical Report](https://arxiv.org/abs/2404.14219)
 
-### Community
+## Summary
 
-- [Ollama Discord](https://discord.gg/ollama)
-- [MCP GitHub](https://github.com/modelcontextprotocol)
+With Aspire's Ollama integration:
 
-## Next Steps
-
-1. ✅ Install Ollama and pull a model
-2. ✅ Start the Employee Management System
-3. ✅ Test MCP Chat manually
-4. ✅ Run Playwright screenshot script
-5. ✅ Experiment with AI-assisted tool discovery
-6. ⏭️ Build custom AI assistant for MCP
-7. ⏭️ Integrate AI suggestions into BlazorWeb UI (future enhancement)
+1. ✅ **Zero Setup**: Just run `dotnet run --project src/AppHost`
+2. ✅ **Auto-Start**: Ollama + Open WebUI start automatically
+3. ✅ **Pre-Configured**: phi3 model ready to use
+4. ✅ **Integrated**: BlazorWeb has AiChatService for AI features
+5. ✅ **Privacy**: All processing is local
 
 ---
 
 **Created**: 2024-11-24  
-**Last Updated**: 2024-11-24  
+**Last Updated**: 2024-11-25  
+**Version**: 2.0 (Aspire Integration)  
 **Maintainer**: Development Team
