@@ -1,14 +1,36 @@
 # Local AI Chat with Ollama - Setup Guide
 
-This guide explains how to set up and test the MCP Chat feature locally using Ollama with SLM (Small Language Models) for AI-powered interactions.
+This guide explains how to set up and test the AI Chat feature locally using Ollama with Microsoft.Extensions.AI for AI-powered MCP tool calling.
 
 ## Overview
 
-The MCP Chat feature is enhanced with local AI capabilities using:
+The AI Chat feature includes:
 - **Aspire Ollama Integration**: Automatically starts Ollama when running AppHost
+- **Microsoft.Extensions.AI**: Uses `IChatClient` for AI interactions
+- **Automatic Tool Calling**: AI analyzes requests and calls MCP tools automatically
 - **Open WebUI**: Browser-based interface for Ollama included
-- **phi3 Model**: Pre-configured small language model for quick testing
-- **OllamaSharp Client**: .NET integration for AI-powered features
+- **phi3 Model**: Pre-configured small language model with function calling support
+
+## Key Features
+
+### AI Agent with MCP Tool Calling
+
+The AI Chat provides an intelligent agent that:
+1. **Understands Natural Language**: You describe what you want in plain language
+2. **Selects Appropriate Tools**: AI automatically determines which MCP tools to use
+3. **Executes Tools**: Calls the tools with correct arguments
+4. **Provides Results**: Returns a human-readable response
+
+**Example Interaction**:
+```
+User: "Show me all employees"
+AI: [Calls EmployeeService_ListEmployeesAsync]
+AI: "Here are the employees in the system: 1. John Doe - Engineer..."
+
+User: "Create a new employee named Jane Smith, email jane@test.com"
+AI: [Calls EmployeeService_CreateEmployeeAsync with {"firstName":"Jane","lastName":"Smith","email":"jane@test.com"}]
+AI: "I've created the employee Jane Smith. Her employee ID is abc-123..."
+```
 
 ## Prerequisites
 
@@ -47,21 +69,15 @@ When you run `dotnet run --project src/AppHost`, the following happens:
 | **Ollama** | Local LLM server (Docker container) | http://localhost:11434 |
 | **Open WebUI** | Browser-based chat interface | http://localhost:8080 |
 | **phi3 Model** | Pre-downloaded SLM (3.8B params) | Automatically available |
-| **BlazorWeb** | Main application with AI integration | See Aspire dashboard |
+| **BlazorWeb** | Main application with AI Chat | See Aspire dashboard |
 
-### 3. Access Aspire Dashboard
+### 3. Access AI Chat in BlazorWeb
 
-Open the Aspire dashboard URL shown in the console (e.g., `http://localhost:15000`) to:
-- View all running services
-- Access Ollama and Open WebUI endpoints
-- Monitor health and logs
-
-### 4. Test with Open WebUI
-
-1. Find "ollama-openwebui" in the Aspire dashboard
+1. Find "blazorweb" in the Aspire dashboard
 2. Click on the endpoint URL
-3. Create an account (local only)
-4. Start chatting with phi3 model
+3. Navigate to **AIチャット** (AI Chat) in the sidebar
+4. Click "AIアシスタントを起動" to initialize
+5. Start chatting in natural language!
 
 ## Architecture
 
@@ -72,67 +88,99 @@ Open the Aspire dashboard URL shown in the console (e.g., `http://localhost:1500
 │                                                                 │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐ │
 │  │   Ollama    │    │ Open WebUI  │    │      BlazorWeb      │ │
-│  │  (Docker)   │◄───│  (Docker)   │    │  (with AiChatService)│ │
-│  │             │    │             │    │                     │ │
-│  │  phi3 model │    │ Chat UI     │    │ MCP Chat + AI       │ │
-│  └─────────────┘    └─────────────┘    └─────────────────────┘ │
-│         │                                        │              │
-│         └────────────────────────────────────────┘              │
-│                     OllamaSharp Client                          │
-│                                                                 │
+│  │  (Docker)   │◄───│  (Docker)   │    │                     │ │
+│  │             │    │             │    │ ┌─────────────────┐ │ │
+│  │  phi3 model │    │ Chat UI     │    │ │ McpAiAgentService│ │ │
+│  └─────────────┘    └─────────────┘    │ │                 │ │ │
+│         │                              │ │ IChatClient +   │ │ │
+│         │                              │ │ MCP Tools       │ │ │
+│         │                              │ └────────┬────────┘ │ │
+│         │                              │          │          │ │
+│         └──────────────────────────────┼──────────┘          │ │
+│             Microsoft.Extensions.AI    │                     │ │
+│                                        │ ┌─────────────────┐ │ │
+│                                        │ │  MCP Servers    │ │ │
+│                                        │ │  - Employee     │ │ │
+│                                        │ │  - Auth         │ │ │
+│                                        │ │  - Notification │ │ │
+│                                        │ │  - Attendance   │ │ │
+│                                        │ └─────────────────┘ │ │
+│                                        └─────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## BlazorWeb AI Integration
 
-The BlazorWeb application includes an `AiChatService` that uses Ollama for:
+The BlazorWeb application includes two AI-related services:
 
-### Available Features
+### 1. McpAiAgentService (NEW - Recommended)
 
-1. **AI-Assisted MCP Tool Arguments**
-   - Generate JSON arguments for MCP tools
-   - Natural language to structured data conversion
-
-2. **Model Availability Check**
-   - Verify Ollama connection
-   - Check if required models are ready
-
-3. **Text Generation**
-   - Generate responses from prompts
-   - Stream responses in real-time
-
-4. **Model Listing**
-   - List available local models
-   - Check model capabilities
-
-### Usage in Code
+Uses `IChatClient` from Microsoft.Extensions.AI with automatic function calling:
 
 ```csharp
-// Inject AiChatService
+// The AI Agent automatically calls MCP tools based on user requests
+@inject McpAiAgentService AiAgent
+
+// Initialize the agent (connects to all MCP servers, discovers tools)
+await AiAgent.InitializeAsync();
+
+// Chat naturally - AI will call tools automatically
+var response = await AiAgent.ChatAsync("Show me all employees");
+// Response: AI calls EmployeeService_ListEmployeesAsync and returns formatted results
+
+// Create an employee - AI determines which tool to use
+var response = await AiAgent.ChatAsync(
+    "Create a new employee: John Doe, john@test.com, Engineer");
+// Response: AI calls EmployeeService_CreateEmployeeAsync with proper arguments
+```
+
+### 2. AiChatService (Legacy)
+
+Direct Ollama access for simple text generation:
+
+```csharp
 @inject AiChatService AiChat
 
-// Check if Ollama is available
-var isAvailable = await AiChat.IsAvailableAsync();
-
-// Generate MCP tool arguments
-var arguments = await AiChat.GenerateMcpToolArgumentsAsync(
-    "CreateEmployeeAsync",
-    "Create a new employee with the specified details",
-    "Create an employee named John Doe, email john@example.com"
-);
-// Returns: {"firstName":"John","lastName":"Doe","email":"john@example.com",...}
-
 // Generate text
-var response = await AiChat.GenerateAsync("Explain what MCP protocol is");
+var response = await AiChat.GenerateAsync("Explain MCP protocol");
 
-// Stream response
-await foreach (var chunk in AiChat.GenerateStreamAsync("Tell me about .NET Aspire"))
-{
-    Console.Write(chunk);
-}
+// Generate tool arguments
+var args = await AiChat.GenerateMcpToolArgumentsAsync(
+    "CreateEmployeeAsync",
+    "Create employee",
+    "Create John Doe, email john@test.com"
+);
+```
 
-// List models
-var models = await AiChat.ListModelsAsync();
+## How Tool Calling Works
+
+The `McpAiAgentService` implements AI-driven tool calling:
+
+### 1. Tool Discovery
+- On initialization, connects to all configured MCP servers
+- Discovers available tools from each server
+- Creates `AIFunction` objects for each tool using `AIFunctionFactory`
+
+### 2. AI Analysis
+- User sends natural language request
+- AI analyzes the request against available tools
+- AI determines which tool(s) to call and with what arguments
+
+### 3. Automatic Execution
+- `FunctionInvokingChatClient` automatically invokes selected tools
+- Tool results are returned to the AI
+- AI generates a human-readable response
+
+### Flow Diagram
+
+```
+User Message → IChatClient → AI Analysis → Tool Selection
+                               ↓
+                    FunctionInvokingChatClient
+                               ↓
+                    Tool Execution via MCP
+                               ↓
+                    Tool Results → AI → Response
 ```
 
 ## Configuration Details

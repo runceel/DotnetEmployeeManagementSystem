@@ -46,6 +46,9 @@
     <!-- MCP Packages -->
     <PackageVersion Include="ModelContextProtocol" Version="0.4.0-preview.3" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="0.4.0-preview.3" />
+    <!-- Microsoft.Extensions.AI -->
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="9.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="9.9.0" />
     <!-- Other Packages -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageVersion Include="MudBlazor" Version="8.14.0" />
