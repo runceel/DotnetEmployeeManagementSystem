@@ -9,22 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
-// Add Ollama client with Aspire service discovery as IChatClient
+// Add Ollama client with Aspire service discovery as IChatClient.
+// Aspire's AddOllamaApiClient registers IChatClient directly in the DI container,
+// so services should inject IChatClient rather than OllamaSharp.IOllamaApiClient.
 builder.AddOllamaApiClient("ollama");
-
-// Add IChatClient from OllamaSharp (OllamaApiClient implements IChatClient)
-builder.Services.AddScoped<IChatClient>(sp =>
-{
-    var ollamaClient = sp.GetRequiredService<OllamaSharp.IOllamaApiClient>();
-    // OllamaApiClient implements IChatClient, cast to get it
-    if (ollamaClient is IChatClient chatClient)
-    {
-        return chatClient;
-    }
-    // Ollama client should always implement IChatClient
-    throw new InvalidOperationException(
-        "Ollama client does not implement IChatClient. Ensure OllamaSharp version supports Microsoft.Extensions.AI.");
-});
 
 // Configure MCP options
 builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));

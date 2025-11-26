@@ -1,94 +1,81 @@
-using OllamaSharp;
 using System.Diagnostics;
+using Microsoft.Extensions.AI;
 
 namespace BlazorWeb.Services;
 
 /// <summary>
-/// Service for interacting with Ollama AI chat functionality.
-/// Uses OllamaSharp client with Aspire service discovery.
+/// Service for interacting with AI chat functionality using Microsoft.Extensions.AI.IChatClient.
+/// Aspire's AddOllamaApiClient registers IChatClient directly in the DI container,
+/// so this service uses the standard IChatClient interface for Aspire integration.
 /// </summary>
 public sealed class AiChatService
 {
-    private readonly IOllamaApiClient _ollamaClient;
+    private readonly IChatClient _chatClient;
     private readonly ILogger<AiChatService> _logger;
     private static readonly ActivitySource ActivitySource = new("BlazorWeb.AiChat");
 
     /// <summary>
-    /// Default model to use for chat interactions
+    /// Default model to use for chat interactions.
+    /// Note: The actual model is typically configured via Aspire orchestration.
     /// </summary>
     public const string DefaultModel = "phi3";
 
-    public AiChatService(IOllamaApiClient ollamaClient, ILogger<AiChatService> logger)
+    public AiChatService(IChatClient chatClient, ILogger<AiChatService> logger)
     {
-        _ollamaClient = ollamaClient;
+        _chatClient = chatClient;
         _logger = logger;
     }
 
     /// <summary>
-    /// Check if Ollama is available and the model is ready
+    /// Check if the AI chat client is available by attempting a simple request.
     /// </summary>
     public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
     {
-        using var activity = ActivitySource.StartActivity("CheckOllamaAvailability");
-        
+        using var activity = ActivitySource.StartActivity("CheckAiAvailability");
+
         try
         {
-            var models = await _ollamaClient.ListLocalModelsAsync(cancellationToken);
-            var modelList = models.ToList();
-            var hasModel = modelList.Any(m => m.Name.Contains(DefaultModel, StringComparison.OrdinalIgnoreCase));
-            
-            activity?.SetTag("models.count", modelList.Count);
-            activity?.SetTag("has.default.model", hasModel);
-            
-            _logger.LogInformation("Ollama available with {ModelCount} models, default model available: {HasModel}", 
-                modelList.Count, hasModel);
-            
-            return hasModel;
+            // Try a simple request to verify the client is operational
+            var response = await _chatClient.GetResponseAsync("ping", cancellationToken: cancellationToken);
+            var isAvailable = response != null;
+
+            activity?.SetTag("available", isAvailable);
+            _logger.LogInformation("AI chat client available: {IsAvailable}", isAvailable);
+
+            return isAvailable;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Ollama is not available");
+            _logger.LogWarning(ex, "AI chat client is not available");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return false;
         }
     }
 
     /// <summary>
-    /// Generate a response from the AI model
+    /// Generate a response from the AI model.
     /// </summary>
     public async Task<string> GenerateAsync(string prompt, string? model = null, CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("GenerateAiResponse");
-        var modelToUse = model ?? DefaultModel;
-        
-        activity?.SetTag("model", modelToUse);
+
         activity?.SetTag("prompt.length", prompt.Length);
+        if (model != null)
+        {
+            activity?.SetTag("model", model);
+        }
 
         try
         {
-            _logger.LogInformation("Generating AI response with model {Model} for prompt of length {Length}", 
-                modelToUse, prompt.Length);
+            _logger.LogInformation("Generating AI response for prompt of length {Length}", prompt.Length);
 
-            var responseBuilder = new System.Text.StringBuilder();
-            
-            await foreach (var chunk in _ollamaClient.GenerateAsync(new OllamaSharp.Models.GenerateRequest
-            {
-                Model = modelToUse,
-                Prompt = prompt,
-                Stream = false
-            }, cancellationToken))
-            {
-                if (chunk?.Response != null)
-                {
-                    responseBuilder.Append(chunk.Response);
-                }
-            }
+            var options = model != null ? new ChatOptions { ModelId = model } : null;
+            var response = await _chatClient.GetResponseAsync(prompt, options, cancellationToken);
+            var result = response.Text ?? string.Empty;
 
-            var result = responseBuilder.ToString();
-            
             activity?.SetTag("response.length", result.Length);
             _logger.LogInformation("AI response generated, length: {Length}", result.Length);
-            
+
             return result;
         }
         catch (Exception ex)
@@ -100,99 +87,91 @@ public sealed class AiChatService
     }
 
     /// <summary>
-    /// Stream a response from the AI model
+    /// Stream a response from the AI model.
     /// </summary>
     public async IAsyncEnumerable<string> GenerateStreamAsync(
-        string prompt, 
+        string prompt,
         string? model = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("GenerateAiResponseStream");
-        var modelToUse = model ?? DefaultModel;
-        
-        activity?.SetTag("model", modelToUse);
+
         activity?.SetTag("prompt.length", prompt.Length);
-
-        _logger.LogInformation("Starting streaming AI response with model {Model}", modelToUse);
-
-        var request = new OllamaSharp.Models.GenerateRequest
+        if (model != null)
         {
-            Model = modelToUse,
-            Prompt = prompt,
-            Stream = true
-        };
+            activity?.SetTag("model", model);
+        }
 
-        await foreach (var response in _ollamaClient.GenerateAsync(request, cancellationToken))
+        _logger.LogInformation("Starting streaming AI response");
+
+        var options = model != null ? new ChatOptions { ModelId = model } : null;
+
+        await foreach (var update in _chatClient.GetStreamingResponseAsync(prompt, options, cancellationToken))
         {
-            if (!string.IsNullOrEmpty(response?.Response))
+            if (!string.IsNullOrEmpty(update.Text))
             {
-                yield return response.Response;
+                yield return update.Text;
             }
         }
     }
 
     /// <summary>
-    /// Generate JSON for MCP tool arguments using AI
+    /// Generate JSON for MCP tool arguments using AI.
     /// </summary>
     public async Task<string> GenerateMcpToolArgumentsAsync(
-        string toolName, 
-        string toolDescription, 
+        string toolName,
+        string toolDescription,
         string userRequest,
         CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("GenerateMcpToolArguments");
         activity?.SetTag("tool.name", toolName);
 
-        var prompt = $@"You are an assistant that generates JSON arguments for MCP (Model Context Protocol) tools.
+        var prompt = $$"""
+            You are an assistant that generates JSON arguments for MCP (Model Context Protocol) tools.
 
-Tool Name: {toolName}
-Tool Description: {toolDescription}
+            Tool Name: {{toolName}}
+            Tool Description: {{toolDescription}}
 
-User Request: {userRequest}
+            User Request: {{userRequest}}
 
-Generate ONLY a valid JSON object with the required arguments. Do not include any explanation, just the JSON.
-If the tool doesn't require any arguments, return an empty object: {{}}
+            Generate ONLY a valid JSON object with the required arguments. Do not include any explanation, just the JSON.
+            If the tool doesn't require any arguments, return an empty object: {}
 
-JSON:";
+            JSON:
+            """;
 
         _logger.LogInformation("Generating MCP tool arguments for tool: {ToolName}", toolName);
 
         var response = await GenerateAsync(prompt, cancellationToken: cancellationToken);
-        
+
         // Extract JSON from response (in case the model adds extra text)
         var jsonStart = response.IndexOf('{');
         var jsonEnd = response.LastIndexOf('}');
-        
+
         if (jsonStart >= 0 && jsonEnd > jsonStart)
         {
             return response.Substring(jsonStart, jsonEnd - jsonStart + 1);
         }
-        
+
         return "{}";
     }
 
     /// <summary>
-    /// List available models
+    /// Get metadata about the chat client if available.
+    /// Note: Model listing is not available through the standard IChatClient interface.
+    /// Use Aspire's configuration to manage available models.
     /// </summary>
-    public async Task<IEnumerable<string>> ListModelsAsync(CancellationToken cancellationToken = default)
+    public ChatClientMetadata? GetMetadata()
     {
-        using var activity = ActivitySource.StartActivity("ListOllamaModels");
-        
         try
         {
-            var models = await _ollamaClient.ListLocalModelsAsync(cancellationToken);
-            var modelNames = models.Select(m => m.Name).ToList();
-            
-            activity?.SetTag("models.count", modelNames.Count);
-            _logger.LogInformation("Listed {Count} Ollama models", modelNames.Count);
-            
-            return modelNames;
+            return _chatClient.GetService<ChatClientMetadata>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to list Ollama models");
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            return Enumerable.Empty<string>();
+            _logger.LogWarning(ex, "Failed to get chat client metadata");
+            return null;
         }
     }
 }
