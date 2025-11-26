@@ -1,0 +1,416 @@
+@page "/ai-chat"
+@rendermode InteractiveServer
+@using BlazorWeb.Services
+@using Microsoft.Extensions.AI
+@inject McpAiAgentService AiAgent
+@inject ILogger<AiChat> Logger
+@implements IAsyncDisposable
+
+<PageTitle>AIチャット - 従業員管理システム</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Class="mr-2" />
+        AIアシスタント - 従業員管理システム
+    </MudText>
+
+    @if (!_isInitialized)
+    {
+        <!-- 初期化パネル -->
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">AIアシスタントを起動</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    AIアシスタントは自然言語で指示を受け取り、適切なMCPツールを自動的に呼び出してタスクを実行します。
+                </MudText>
+
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    <strong>使用例:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>"従業員一覧を表示して"</li>
+                        <li>"新しい従業員を登録して。名前は山田太郎、メールはtaro@example.com"</li>
+                        <li>"部署一覧を見せて"</li>
+                        <li>"勤怠記録を確認して"</li>
+                    </ul>
+                </MudAlert>
+
+                <MudButton 
+                    Variant="Variant.Filled" 
+                    Color="Color.Primary" 
+                    FullWidth="true"
+                    OnClick="InitializeAsync" 
+                    Disabled="@_isInitializing"
+                    StartIcon="@Icons.Material.Filled.PlayArrow">
+                    @if (_isInitializing)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>AIアシスタントを起動中...</span>
+                    }
+                    else
+                    {
+                        <span>AIアシスタントを起動</span>
+                    }
+                </MudButton>
+
+                @if (!string.IsNullOrEmpty(_initError))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">@_initError</MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <MudGrid>
+            <!-- 左側: ステータスとツール情報 -->
+            <MudItem xs="12" md="3">
+                <!-- 接続状態 -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">接続状態</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudList T="string" Dense="true">
+                            @foreach (var serverName in AiAgent.ConnectedServers)
+                            {
+                                var server = AiAgent.AvailableServers.FirstOrDefault(s => s.Name == serverName);
+                                if (server != null)
+                                {
+                                    <MudListItem T="string"
+                                        Icon="@server.Icon" 
+                                        IconColor="Color.Success">
+                                        <MudText Typo="Typo.body2">@server.DisplayName</MudText>
+                                    </MudListItem>
+                                }
+                            }
+                        </MudList>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" Class="mr-1" />
+                            @AiAgent.ToolCount 個のツールが利用可能
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- ツール使用履歴 -->
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">ツール呼び出し履歴</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton 
+                                Icon="@Icons.Material.Filled.Delete" 
+                                Size="Size.Small"
+                                OnClick="ClearToolHistory" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent Style="max-height: 300px; overflow-y: auto;">
+                        @if (!_toolCallHistory.Any())
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                ツール呼び出しなし
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudList T="string" Dense="true">
+                                @foreach (var toolCall in _toolCallHistory.AsEnumerable().Reverse().Take(10))
+                                {
+                                    <MudListItem T="string">
+                                        <MudText Typo="Typo.caption">
+                                            <MudIcon Icon="@Icons.Material.Filled.Functions" Size="Size.Small" Class="mr-1" />
+                                            @toolCall.FunctionName
+                                        </MudText>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 右側: チャットエリア -->
+            <MudItem xs="12" md="9">
+                <!-- チャット履歴 -->
+                <MudCard Class="mb-4" Style="height: 500px; display: flex; flex-direction: column;">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Chat" Class="mr-1" />
+                                AIチャット
+                            </MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton 
+                                Icon="@Icons.Material.Filled.Delete" 
+                                Color="Color.Error" 
+                                OnClick="ClearChatHistory"
+                                Size="Size.Small" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent Style="flex: 1; overflow-y: auto;" id="chat-container">
+                        @if (!_displayMessages.Any())
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-4">
+                                AIアシスタントに何か質問してください。自然言語で指示すると、適切なツールを自動的に呼び出してタスクを実行します。
+                            </MudText>
+                        }
+                        else
+                        {
+                            @foreach (var message in _displayMessages)
+                            {
+                                <div class="@(message.IsUser ? "d-flex justify-end mb-3" : "d-flex justify-start mb-3")">
+                                    <MudPaper 
+                                        Class="pa-3" 
+                                        Style="@(message.IsUser ? "background-color: #1976d2; color: white; max-width: 80%;" : "background-color: #f5f5f5; max-width: 80%;")">
+                                        <MudText Typo="Typo.body2" Style="@(message.IsUser ? "color: white;" : "")">
+                                            <strong>@(message.IsUser ? "あなた" : "AI")</strong>
+                                            @if (message.ToolCallCount > 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-2">
+                                                    @message.ToolCallCount ツール使用
+                                                </MudChip>
+                                            }
+                                        </MudText>
+                                        <MudText Typo="Typo.body1" Style="@(message.IsUser ? "color: white; white-space: pre-wrap;" : "white-space: pre-wrap;")">
+                                            @message.Text
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="@(message.IsUser ? "color: rgba(255,255,255,0.7);" : "color: rgba(0,0,0,0.6);")">
+                                            @message.Timestamp.ToString("HH:mm:ss")
+                                        </MudText>
+                                    </MudPaper>
+                                </div>
+                            }
+
+                            @if (_isProcessing)
+                            {
+                                <div class="d-flex justify-start mb-3">
+                                    <MudPaper Class="pa-3" Style="background-color: #f5f5f5; max-width: 80%;">
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>@_processingStatus</span>
+                                    </MudPaper>
+                                </div>
+                            }
+                        }
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- 入力エリア -->
+                <MudCard>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="10">
+                                <MudTextField 
+                                    @bind-Value="_userInput" 
+                                    Label="メッセージを入力" 
+                                    Variant="Variant.Outlined"
+                                    Placeholder="例: 従業員一覧を表示して"
+                                    Disabled="@_isProcessing"
+                                    OnKeyUp="HandleKeyUp"
+                                    Lines="2" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudButton 
+                                    Variant="Variant.Filled" 
+                                    Color="Color.Primary" 
+                                    OnClick="SendMessageAsync"
+                                    Disabled="@(_isProcessing || string.IsNullOrWhiteSpace(_userInput))"
+                                    FullWidth="true"
+                                    Style="height: 100%;">
+                                    @if (_isProcessing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Send" />
+                                    }
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <!-- ヘルプセクション -->
+        <MudExpansionPanels Class="mt-4">
+            <MudExpansionPanel Text="使い方ガイド" Icon="@Icons.Material.Filled.Help">
+                <MudText Typo="Typo.h6" Class="mb-2">AIアシスタントの使い方</MudText>
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    AIアシスタントに自然言語で指示を出すと、適切なMCPツールを自動的に呼び出してタスクを実行します。
+                </MudText>
+                
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">使用例</MudText>
+                <MudList T="string">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Person">
+                        <strong>従業員管理:</strong> "List all employees" / "従業員一覧を表示"
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.PersonAdd">
+                        <strong>従業員作成:</strong> "Create a new employee named John Doe with email john@example.com"
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Business">
+                        <strong>部署管理:</strong> "Show me all departments" / "部署一覧を見せて"
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Schedule">
+                        <strong>勤怠管理:</strong> "Check attendance records" / "勤怠記録を確認"
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Notifications">
+                        <strong>通知:</strong> "Show recent notifications" / "最近の通知を表示"
+                    </MudListItem>
+                </MudList>
+
+                <MudAlert Severity="Severity.Info" Class="mt-4">
+                    <strong>ヒント:</strong> AIは自動的に必要なツールを選択します。複雑なタスクも一度の指示で実行可能です。
+                </MudAlert>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+</MudContainer>
+
+@code {
+    private bool _isInitialized;
+    private bool _isInitializing;
+    private bool _isProcessing;
+    private string? _initError;
+    private string _userInput = string.Empty;
+    private string _processingStatus = "考え中...";
+    private List<DisplayMessage> _displayMessages = new();
+    private List<ChatMessage> _conversationHistory = new();
+    private List<ToolCallInfo> _toolCallHistory = new();
+
+    private async Task InitializeAsync()
+    {
+        _isInitializing = true;
+        _initError = null;
+        StateHasChanged();
+
+        try
+        {
+            await AiAgent.InitializeAsync();
+            _isInitialized = true;
+            _displayMessages.Add(new DisplayMessage
+            {
+                Text = $"AIアシスタントが起動しました。{AiAgent.ConnectedServers.Count}個のサービスに接続し、{AiAgent.ToolCount}個のツールが利用可能です。何かお手伝いできることはありますか？",
+                IsUser = false,
+                Timestamp = DateTime.Now
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize AI agent");
+            _initError = $"初期化に失敗しました: {ex.Message}";
+        }
+        finally
+        {
+            _isInitializing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && !_isProcessing && !string.IsNullOrWhiteSpace(_userInput))
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_userInput) || _isProcessing)
+            return;
+
+        var userMessage = _userInput.Trim();
+        _userInput = string.Empty;
+        _isProcessing = true;
+        _processingStatus = "考え中...";
+        StateHasChanged();
+
+        // Add user message to display
+        _displayMessages.Add(new DisplayMessage
+        {
+            Text = userMessage,
+            IsUser = true,
+            Timestamp = DateTime.Now
+        });
+        StateHasChanged();
+
+        try
+        {
+            // Update processing status
+            _processingStatus = "ツールを選択中...";
+            StateHasChanged();
+
+            // Get response from AI agent
+            var response = await AiAgent.ChatAsync(userMessage, _conversationHistory);
+
+            // Update conversation history
+            _conversationHistory = response.UpdatedHistory;
+
+            // Track tool calls
+            if (response.ToolCalls.Any())
+            {
+                _toolCallHistory.AddRange(response.ToolCalls);
+            }
+
+            // Add AI response to display
+            _displayMessages.Add(new DisplayMessage
+            {
+                Text = response.Text,
+                IsUser = false,
+                Timestamp = DateTime.Now,
+                ToolCallCount = response.ToolCalls.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to process message");
+            _displayMessages.Add(new DisplayMessage
+            {
+                Text = $"エラーが発生しました: {ex.Message}",
+                IsUser = false,
+                Timestamp = DateTime.Now
+            });
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearChatHistory()
+    {
+        _displayMessages.Clear();
+        _conversationHistory.Clear();
+        StateHasChanged();
+    }
+
+    private void ClearToolHistory()
+    {
+        _toolCallHistory.Clear();
+        StateHasChanged();
+    }
+
+    // Note: AiAgent is injected via DI and should not be disposed here.
+    // The DI container manages its lifecycle.
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    private class DisplayMessage
+    {
+        public string Text { get; set; } = string.Empty;
+        public bool IsUser { get; set; }
+        public DateTime Timestamp { get; set; }
+        public int ToolCallCount { get; set; }
+    }
+}

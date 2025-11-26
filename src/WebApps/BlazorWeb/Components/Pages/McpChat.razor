@@ -1,0 +1,565 @@
+@page "/mcp-chat"
+@rendermode InteractiveServer
+@using BlazorWeb.Models
+@using BlazorWeb.Services
+@using System.Text.Json
+@inject McpChatService McpChatService
+@inject ILogger<McpChat> Logger
+@implements IAsyncDisposable
+
+<PageTitle>MCPチャット - 従業員管理システム</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Chat" Class="mr-2" />
+        MCPチャット - 統合サービス操作
+    </MudText>
+
+    @if (!_isAnyConnected)
+    {
+        <!-- 接続パネル -->
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">MCPサーバーに接続</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    従業員管理システムの各サービスにMCP経由で接続します。
+                    接続後、自然言語での操作が可能になります。
+                </MudText>
+
+                <MudGrid>
+                    @foreach (var server in McpChatService.AvailableServers)
+                    {
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudCard Outlined="true">
+                                <MudCardContent Class="text-center">
+                                    <MudIcon Icon="@server.Icon" Size="Size.Large" Color="Color.Primary" Class="mb-2" />
+                                    <MudText Typo="Typo.h6">@server.DisplayName</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                                        @server.Description
+                                    </MudText>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <MudButton 
+                    Variant="Variant.Filled" 
+                    Color="Color.Primary" 
+                    FullWidth="true"
+                    Class="mt-4"
+                    OnClick="ConnectToAllServersAsync" 
+                    Disabled="@_isConnecting"
+                    StartIcon="@Icons.Material.Filled.Link">
+                    @if (_isConnecting)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>接続中...</span>
+                    }
+                    else
+                    {
+                        <span>全サービスに接続</span>
+                    }
+                </MudButton>
+
+                @if (_connectionErrors.Any())
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mt-3">
+                        <MudText Typo="Typo.body2">一部のサーバーに接続できませんでした：</MudText>
+                        <MudList T="string" Dense="true">
+                                                @foreach (var error in _connectionErrors)
+                            {
+                                <MudListItem T="string">@error</MudListItem>
+                            }
+                        </MudList>
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <!-- 接続済み状態のUI -->
+        <MudGrid>
+            <!-- 左側: サーバー一覧とツール -->
+            <MudItem xs="12" md="4">
+                <!-- 接続状態 -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">接続状態</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton 
+                                Icon="@Icons.Material.Filled.Refresh" 
+                                Color="Color.Primary" 
+                                OnClick="RefreshAllToolsAsync"
+                                Size="Size.Small" 
+                                />
+                            <MudIconButton 
+                                Icon="@Icons.Material.Filled.LinkOff" 
+                                Color="Color.Error" 
+                                OnClick="DisconnectAll"
+                                Size="Size.Small" 
+                                />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudList T="string" Dense="true">
+                            @foreach (var serverName in McpChatService.ConnectedServers)
+                            {
+                                var server = McpChatService.AvailableServers.FirstOrDefault(s => s.Name == serverName);
+                                if (server != null)
+                                {
+                                    <MudListItem T="string"
+                                        Icon="@server.Icon" 
+                                        IconColor="Color.Success"
+                                        OnClick="@(() => SelectServer(serverName))">
+                                        <MudText Typo="Typo.body1">@server.DisplayName</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @(McpChatService.GetToolsForServer(serverName)?.Count ?? 0) ツール
+                                        </MudText>
+                                    </MudListItem>
+                                }
+                            }
+                        </MudList>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- 利用可能なツール -->
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                利用可能なツール
+                                @if (!string.IsNullOrEmpty(_selectedServerName))
+                                {
+                                    var server = McpChatService.AvailableServers.FirstOrDefault(s => s.Name == _selectedServerName);
+                                    @if (server != null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@server.DisplayName</MudChip>
+                                    }
+                                }
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Style="max-height: 500px; overflow-y: auto;">
+                        @if (!string.IsNullOrEmpty(_selectedServerName))
+                        {
+                            var tools = McpChatService.GetToolsForServer(_selectedServerName);
+                            if (tools != null && tools.Any())
+                            {
+                                <MudList T="string" Dense="true">
+                                    @foreach (var tool in tools)
+                                    {
+                                        <MudListItem T="string" OnClick="@(() => SelectTool(tool))">
+                                            <MudText Typo="Typo.body1">
+                                                <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" Class="mr-1" />
+                                                @tool.Name
+                                            </MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                @tool.Description
+                                            </MudText>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">ツールがありません</MudText>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                左側のサーバーを選択してツールを表示
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 右側: チャットエリア -->
+            <MudItem xs="12" md="8">
+                <!-- チャット履歴 -->
+                <MudCard Class="mb-4" Style="height: 500px; display: flex; flex-direction: column;">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">チャット履歴</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton 
+                                Icon="@Icons.Material.Filled.Delete" 
+                                Color="Color.Error" 
+                                OnClick="ClearChatHistory"
+                                Size="Size.Small" 
+                                />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent Style="flex: 1; overflow-y: auto;" id="chat-container">
+                        @if (!_chatHistory.Any())
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-4">
+                                ツールを選択して実行してください
+                            </MudText>
+                        }
+                        else
+                        {
+                            @foreach (var message in _chatHistory)
+                            {
+                                <div class="@(message.IsUser ? "d-flex justify-end mb-3" : "d-flex justify-start mb-3")">
+                                    <MudPaper 
+                                        Class="pa-3" 
+                                        Style="@(message.IsUser ? "background-color: #1976d2; color: white; max-width: 70%;" : "background-color: #f5f5f5; max-width: 70%;")">
+                                        <MudText Typo="Typo.body2" Style="@(message.IsUser ? "color: white;" : "")">
+                                            <strong>@(message.IsUser ? "あなた" : "MCP"):</strong>
+                                        </MudText>
+                                        <MudText Typo="Typo.body1" Style="@(message.IsUser ? "color: white; white-space: pre-wrap;" : "white-space: pre-wrap;")">
+                                            @message.Text
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="@(message.IsUser ? "color: rgba(255,255,255,0.7);" : "color: rgba(0,0,0,0.6);")">
+                                            @message.Timestamp.ToString("HH:mm:ss")
+                                        </MudText>
+                                    </MudPaper>
+                                </div>
+                            }
+                        }
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- ツール実行パネル -->
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">ツール実行</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_selectedTool != null && !string.IsNullOrEmpty(_selectedServerName))
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                                <strong>@_selectedTool.Name</strong>: @_selectedTool.Description
+                            </MudAlert>
+
+                            <MudTextField 
+                                @bind-Value="_toolArguments" 
+                                Label="引数 (JSON形式)" 
+                                Variant="Variant.Outlined"
+                                Lines="5"
+                                Placeholder='{"employeeId": "guid-here"}' 
+                                Class="mb-3" />
+
+                            <MudButton 
+                                Variant="Variant.Filled" 
+                                Color="Color.Success" 
+                                OnClick="ExecuteToolAsync"
+                                Disabled="@_isExecuting"
+                                StartIcon="@Icons.Material.Filled.PlayArrow"
+                                FullWidth="true">
+                                @if (_isExecuting)
+                                {
+                                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                                    <span>実行中...</span>
+                                }
+                                else
+                                {
+                                    <span>ツールを実行</span>
+                                }
+                            </MudButton>
+
+                            @if (!string.IsNullOrEmpty(_executionError))
+                            {
+                                <MudAlert Severity="Severity.Error" Class="mt-3">@_executionError</MudAlert>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                左側からツールを選択してください
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <!-- ヘルプセクション -->
+        <MudExpansionPanels Class="mt-4">
+            <MudExpansionPanel Text="使い方ガイド" Icon="@Icons.Material.Filled.Help">
+                <MudText Typo="Typo.h6" Class="mb-2">MCPチャットの使い方</MudText>
+                <MudList T="string">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Circle" IconSize="Size.Small">
+                        <strong>1. サーバー選択:</strong> 左側のリストから操作したいサービスを選択します
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Circle" IconSize="Size.Small">
+                        <strong>2. ツール選択:</strong> 選択したサービスの利用可能なツール一覧から実行したい操作を選びます
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Circle" IconSize="Size.Small">
+                        <strong>3. 引数入力:</strong> JSON形式でツールに必要な引数を入力します
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Circle" IconSize="Size.Small">
+                        <strong>4. 実行:</strong> 「ツールを実行」ボタンをクリックして操作を実行します
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Circle" IconSize="Size.Small">
+                        <strong>5. 結果確認:</strong> チャット履歴に実行結果が表示されます
+                    </MudListItem>
+                </MudList>
+                
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">JSON引数の例</MudText>
+                <MudPaper Class="pa-3 mb-2" Outlined="true">
+                    <MudText Typo="Typo.body2">従業員取得:</MudText>
+                    <code>{"employeeId": "your-guid-here"}</code>
+                </MudPaper>
+                <MudPaper Class="pa-3" Outlined="true">
+                    <MudText Typo="Typo.body2">従業員作成:</MudText>
+                    <code>{"firstName": "太郎", "lastName": "山田", "email": "taro@example.com", "departmentId": "dept-guid", "position": "エンジニア", "hireDate": "2024-01-01"}</code>
+                </MudPaper>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+</MudContainer>
+
+@code {
+    private bool _isConnecting;
+    private bool _isExecuting;
+    private bool _isAnyConnected;
+    private List<string> _connectionErrors = new();
+    private List<ChatMessage> _chatHistory = new();
+    private string? _selectedServerName;
+    private ModelContextProtocol.Client.McpClientTool? _selectedTool;
+    private string _toolArguments = string.Empty;
+    private string? _executionError;
+
+    private async Task ConnectToAllServersAsync()
+    {
+        _isConnecting = true;
+        _connectionErrors.Clear();
+        StateHasChanged();
+
+        try
+        {
+            var results = await McpChatService.ConnectToAllServersAsync();
+            
+            foreach (var (serverName, success) in results)
+            {
+                if (!success)
+                {
+                    var server = McpChatService.AvailableServers.FirstOrDefault(s => s.Name == serverName);
+                    _connectionErrors.Add($"{server?.DisplayName ?? serverName}: 接続失敗");
+                }
+            }
+
+            _isAnyConnected = McpChatService.ConnectedServers.Any();
+            
+            if (_isAnyConnected)
+            {
+                AddSystemMessage($"{McpChatService.ConnectedServers.Count}個のサーバーに接続しました");
+                
+                // デフォルトで最初のサーバーを選択
+                if (McpChatService.ConnectedServers.Any())
+                {
+                    _selectedServerName = McpChatService.ConnectedServers.First();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to connect to servers");
+            _connectionErrors.Add($"予期しないエラー: {ex.Message}");
+        }
+        finally
+        {
+            _isConnecting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void DisconnectAll()
+    {
+        McpChatService.DisconnectAll();
+        _isAnyConnected = false;
+        _selectedServerName = null;
+        _selectedTool = null;
+        _chatHistory.Clear();
+        StateHasChanged();
+    }
+
+    private void SelectServer(string serverName)
+    {
+        _selectedServerName = serverName;
+        _selectedTool = null;
+        _toolArguments = string.Empty;
+        _executionError = null;
+        StateHasChanged();
+    }
+
+    private void SelectTool(ModelContextProtocol.Client.McpClientTool tool)
+    {
+        _selectedTool = tool;
+        _toolArguments = "{}";
+        _executionError = null;
+        StateHasChanged();
+    }
+
+    private async Task ExecuteToolAsync()
+    {
+        if (_selectedTool == null || string.IsNullOrEmpty(_selectedServerName))
+            return;
+
+        _isExecuting = true;
+        _executionError = null;
+        StateHasChanged();
+
+        try
+        {
+            // 引数をパース
+            var arguments = new Dictionary<string, object?>();
+            if (!string.IsNullOrWhiteSpace(_toolArguments))
+            {
+                var jsonDoc = JsonDocument.Parse(_toolArguments);
+                foreach (var prop in jsonDoc.RootElement.EnumerateObject())
+                {
+                    arguments[prop.Name] = prop.Value.ValueKind switch
+                    {
+                        JsonValueKind.Number => prop.Value.GetDouble(),
+                        JsonValueKind.String => prop.Value.GetString(),
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        JsonValueKind.Null => null,
+                        _ => prop.Value.ToString()
+                    };
+                }
+            }
+
+            // ユーザーメッセージ追加
+            var server = McpChatService.AvailableServers.FirstOrDefault(s => s.Name == _selectedServerName);
+            AddUserMessage($"[{server?.DisplayName}] {_selectedTool.Name}\n引数: {JsonSerializer.Serialize(arguments, new JsonSerializerOptions { WriteIndented = true })}");
+
+            // ツール実行
+            var result = await McpChatService.CallToolAsync(_selectedServerName, _selectedTool.Name, arguments);
+
+            // 結果を整形して表示
+            var responseText = FormatToolResult(result);
+            AddSystemMessage(responseText);
+
+            // 入力クリア
+            _toolArguments = "{}";
+        }
+        catch (JsonException ex)
+        {
+            _executionError = $"JSON形式が正しくありません: {ex.Message}";
+            Logger.LogError(ex, "Invalid JSON in tool arguments");
+        }
+        catch (Exception ex)
+        {
+            _executionError = $"実行エラー: {ex.Message}";
+            Logger.LogError(ex, "Tool execution failed");
+            AddSystemMessage($"❌ エラー: {ex.Message}");
+        }
+        finally
+        {
+            _isExecuting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshAllToolsAsync()
+    {
+        try
+        {
+            foreach (var serverName in McpChatService.ConnectedServers)
+            {
+                await McpChatService.RefreshToolsAsync(serverName);
+            }
+            AddSystemMessage("ツールリストを更新しました");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh tools");
+        }
+    }
+
+    private void ClearChatHistory()
+    {
+        _chatHistory.Clear();
+        StateHasChanged();
+    }
+
+    private void AddUserMessage(string text)
+    {
+        _chatHistory.Add(new ChatMessage
+        {
+            Text = text,
+            IsUser = true,
+            Timestamp = DateTime.Now
+        });
+        StateHasChanged();
+    }
+
+    private void AddSystemMessage(string text)
+    {
+        _chatHistory.Add(new ChatMessage
+        {
+            Text = text,
+            IsUser = false,
+            Timestamp = DateTime.Now
+        });
+        StateHasChanged();
+    }
+
+    private string FormatToolResult(ModelContextProtocol.Protocol.CallToolResult result)
+    {
+        if (result.Content.Count == 0)
+            return "✅ 実行完了（応答なし）";
+
+        var responseText = "✅ 実行結果:\n\n";
+        foreach (var content in result.Content)
+        {
+            if (content is ModelContextProtocol.Protocol.TextContentBlock textBlock)
+            {
+                responseText += textBlock.Text + "\n";
+            }
+            else
+            {
+                responseText += content.ToString() + "\n";
+            }
+        }
+
+        // JSONとして整形を試みる
+        try
+        {
+            var firstText = result.Content.FirstOrDefault() as ModelContextProtocol.Protocol.TextContentBlock;
+            if (firstText != null)
+            {
+                var jsonDoc = JsonDocument.Parse(firstText.Text);
+                responseText = "✅ 実行結果:\n\n" + JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions { WriteIndented = true });
+            }
+        }
+        catch
+        {
+            // JSON整形失敗時はそのまま表示
+        }
+
+        return responseText;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (McpChatService != null)
+        {
+            await McpChatService.DisposeAsync();
+        }
+    }
+
+    private class ChatMessage
+    {
+        public string Text { get; set; } = string.Empty;
+        public bool IsUser { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+}

@@ -13,6 +13,11 @@
     
     <MudDivider Class="my-2" />
     
+    <MudNavLink Href="ai-chat" Icon="@Icons.Material.Filled.SmartToy">AIチャット</MudNavLink>
+    <MudNavLink Href="mcp-chat" Icon="@Icons.Material.Filled.Chat">MCPチャット</MudNavLink>
+    
+    <MudDivider Class="my-2" />
+    
     @if (AuthStateService.IsAuthenticated)
     {
         <MudNavLink Icon="@Icons.Material.Filled.Person">
