@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using BlazorWeb.Models;
-using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -16,28 +15,22 @@ public sealed class McpChatService : IAsyncDisposable
     private static readonly ActivitySource ActivitySource = new("BlazorWeb.McpChat");
     
     private readonly ILogger<McpChatService> _logger;
-    private readonly McpOptions _mcpOptions;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILoggerFactory _loggerFactory;
+    private readonly McpConnectionHelper _connectionHelper;
     private readonly ConcurrentDictionary<string, McpClient> _connectedClients = new();
     private readonly ConcurrentDictionary<string, IList<McpClientTool>> _serverTools = new();
 
     public McpChatService(
         ILogger<McpChatService> logger,
-        IOptions<McpOptions> mcpOptions,
-        IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory)
+        McpConnectionHelper connectionHelper)
     {
         _logger = logger;
-        _mcpOptions = mcpOptions.Value;
-        _httpClientFactory = httpClientFactory;
-        _loggerFactory = loggerFactory;
+        _connectionHelper = connectionHelper;
     }
 
     /// <summary>
     /// 利用可能なサーバーリストを取得
     /// </summary>
-    public IReadOnlyList<McpServerConfiguration> AvailableServers => _mcpOptions.Servers;
+    public IReadOnlyList<McpServerConfiguration> AvailableServers => _connectionHelper.AvailableServers;
 
     /// <summary>
     /// 接続済みサーバーの名前リストを取得
@@ -52,7 +45,7 @@ public sealed class McpChatService : IAsyncDisposable
         using var activity = ActivitySource.StartActivity("ConnectToServer");
         activity?.SetTag("server.name", serverName);
 
-        var serverConfig = _mcpOptions.Servers.FirstOrDefault(s => s.Name == serverName);
+        var serverConfig = _connectionHelper.AvailableServers.FirstOrDefault(s => s.Name == serverName);
         if (serverConfig == null)
         {
             _logger.LogWarning("Server configuration not found: {ServerName}", serverName);
@@ -68,41 +61,18 @@ public sealed class McpChatService : IAsyncDisposable
 
         try
         {
-            var httpClientName = $"mcp-{serverConfig.Name.ToLowerInvariant()}";
-            _logger.LogInformation("Connecting to MCP server: {ServerName} using HttpClient: {HttpClientName}", serverName, httpClientName);
-
-            var httpClient = _httpClientFactory.CreateClient(httpClientName);
-            
-            if (httpClient.BaseAddress is null)
+            var result = await _connectionHelper.ConnectToServerAsync(serverConfig, cancellationToken);
+            if (result is null)
             {
-                _logger.LogError("HttpClient for {ServerName} does not have a BaseAddress configured", serverName);
-                activity?.SetStatus(ActivityStatusCode.Error, "HttpClient BaseAddress not configured");
                 return false;
             }
 
-            var transport = new HttpClientTransport(
-                new HttpClientTransportOptions
-                {
-                    Endpoint = new Uri(httpClient.BaseAddress, "api/mcp"),
-                    TransportMode = HttpTransportMode.StreamableHttp
-                },
-                httpClient,
-                _loggerFactory,
-                ownsHttpClient: false);
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(_mcpOptions.ConnectionTimeoutMs);
-
-            var client = await McpClient.CreateAsync(transport, cancellationToken: cts.Token);
-            _connectedClients[serverName] = client;
-
-            // ツールリストを取得してキャッシュ
-            var tools = await client.ListToolsAsync(cancellationToken: cts.Token);
-            _serverTools[serverName] = tools;
+            _connectedClients[serverName] = result.Client;
+            _serverTools[serverName] = result.Tools;
 
             _logger.LogInformation("Successfully connected to {ServerName}. Tools available: {ToolCount}",
-                serverName, tools.Count);
-            activity?.SetTag("tools.count", tools.Count);
+                serverName, result.Tools.Count);
+            activity?.SetTag("tools.count", result.Tools.Count);
 
             return true;
         }
@@ -128,7 +98,7 @@ public sealed class McpChatService : IAsyncDisposable
         using var activity = ActivitySource.StartActivity("ConnectToAllServers");
         
         var results = new Dictionary<string, bool>();
-        var tasks = _mcpOptions.Servers.Select(async server =>
+        var tasks = _connectionHelper.AvailableServers.Select(async server =>
         {
             var success = await ConnectToServerAsync(server.Name, cancellationToken);
             return (server.Name, success);
@@ -142,9 +112,9 @@ public sealed class McpChatService : IAsyncDisposable
 
         var successCount = results.Values.Count(x => x);
         _logger.LogInformation("Connected to {SuccessCount}/{TotalCount} servers",
-            successCount, _mcpOptions.Servers.Count);
+            successCount, _connectionHelper.AvailableServers.Count);
         activity?.SetTag("servers.connected", successCount);
-        activity?.SetTag("servers.total", _mcpOptions.Servers.Count);
+        activity?.SetTag("servers.total", _connectionHelper.AvailableServers.Count);
 
         return results;
     }
@@ -226,7 +196,7 @@ public sealed class McpChatService : IAsyncDisposable
                 toolName, serverName, JsonSerializer.Serialize(arguments));
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(_mcpOptions.ToolExecutionTimeoutMs);
+            cts.CancelAfter(_connectionHelper.ToolExecutionTimeoutMs);
 
             var result = await client.CallToolAsync(toolName, arguments, cancellationToken: cts.Token);
 
