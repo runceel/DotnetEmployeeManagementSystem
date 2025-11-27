@@ -19,6 +19,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
     private readonly IChatClient _chatClient;
     private readonly ILogger<McpAiAgentService> _logger;
     private readonly McpOptions _mcpOptions;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly Dictionary<string, McpClient> _mcpClients = new();
     private readonly Dictionary<string, IList<McpClientTool>> _serverTools = new();
     private readonly List<AIFunction> _aiFunctions = new();
@@ -48,11 +49,13 @@ public sealed class McpAiAgentService : IAsyncDisposable
     public McpAiAgentService(
         IChatClient chatClient,
         ILogger<McpAiAgentService> logger,
-        IOptions<McpOptions> mcpOptions)
+        IOptions<McpOptions> mcpOptions,
+        IHttpClientFactory httpClientFactory)
     {
         _chatClient = chatClient;
         _logger = logger;
         _mcpOptions = mcpOptions.Value;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -119,13 +122,19 @@ public sealed class McpAiAgentService : IAsyncDisposable
         using var activity = ActivitySource.StartActivity("ConnectToMcpServer");
         activity?.SetTag("server.name", server.Name);
 
-        _logger.LogInformation("Connecting to MCP server: {ServerName} at {Url}", server.Name, server.EndpointUrl);
+        var httpClientName = $"mcp-{server.Name.ToLowerInvariant()}";
+        _logger.LogInformation("Connecting to MCP server: {ServerName} using HttpClient: {HttpClientName}", server.Name, httpClientName);
 
-        var transport = new HttpClientTransport(new HttpClientTransportOptions
-        {
-            Endpoint = new Uri(server.EndpointUrl),
-            TransportMode = HttpTransportMode.StreamableHttp
-        });
+        var httpClient = _httpClientFactory.CreateClient(httpClientName);
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri("/api/mcp", UriKind.Relative),
+                TransportMode = HttpTransportMode.StreamableHttp
+            },
+            httpClient,
+            loggerFactory: null,
+            ownsHttpClient: false);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_mcpOptions.ConnectionTimeoutMs);

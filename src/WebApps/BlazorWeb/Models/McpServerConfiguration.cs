@@ -16,11 +16,6 @@ public sealed class McpServerConfiguration
     public required string DisplayName { get; init; }
 
     /// <summary>
-    /// MCPエンドポイントURL
-    /// </summary>
-    public required string EndpointUrl { get; init; }
-
-    /// <summary>
     /// サーバーの説明
     /// </summary>
     public string? Description { get; init; }

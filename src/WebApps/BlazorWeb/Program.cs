@@ -57,6 +57,24 @@ builder.Services.AddHttpClient<IAttendanceApiClient, AttendanceApiClient>("atten
     client.BaseAddress = new Uri("http://attendanceservice-api");
 });
 
+// Add Named HttpClients for MCP servers with Aspire service discovery
+builder.Services.AddHttpClient("mcp-employeeservice", client =>
+{
+    client.BaseAddress = new Uri("http://employeeservice-api");
+});
+builder.Services.AddHttpClient("mcp-authservice", client =>
+{
+    client.BaseAddress = new Uri("http://authservice-api");
+});
+builder.Services.AddHttpClient("mcp-notificationservice", client =>
+{
+    client.BaseAddress = new Uri("http://notificationservice-api");
+});
+builder.Services.AddHttpClient("mcp-attendanceservice", client =>
+{
+    client.BaseAddress = new Uri("http://attendanceservice-api");
+});
+
 // Add authentication state management service
 builder.Services.AddScoped<AuthStateService>();
 
