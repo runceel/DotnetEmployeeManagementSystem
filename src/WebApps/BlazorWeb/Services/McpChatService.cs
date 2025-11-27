@@ -17,15 +17,21 @@ public sealed class McpChatService : IAsyncDisposable
     
     private readonly ILogger<McpChatService> _logger;
     private readonly McpOptions _mcpOptions;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ConcurrentDictionary<string, McpClient> _connectedClients = new();
     private readonly ConcurrentDictionary<string, IList<McpClientTool>> _serverTools = new();
 
     public McpChatService(
         ILogger<McpChatService> logger,
-        IOptions<McpOptions> mcpOptions)
+        IOptions<McpOptions> mcpOptions,
+        IHttpClientFactory httpClientFactory,
+        ILoggerFactory loggerFactory)
     {
         _logger = logger;
         _mcpOptions = mcpOptions.Value;
+        _httpClientFactory = httpClientFactory;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -62,13 +68,19 @@ public sealed class McpChatService : IAsyncDisposable
 
         try
         {
-            _logger.LogInformation("Connecting to MCP server: {ServerName} at {Url}", serverName, serverConfig.EndpointUrl);
+            var httpClientName = $"mcp-{serverConfig.Name.ToLowerInvariant()}";
+            _logger.LogInformation("Connecting to MCP server: {ServerName} using HttpClient: {HttpClientName}", serverName, httpClientName);
 
-            var transport = new HttpClientTransport(new HttpClientTransportOptions
-            {
-                Endpoint = new Uri(serverConfig.EndpointUrl),
-                TransportMode = HttpTransportMode.StreamableHttp
-            });
+            var httpClient = _httpClientFactory.CreateClient(httpClientName);
+            var transport = new HttpClientTransport(
+                new HttpClientTransportOptions
+                {
+                    Endpoint = new Uri("/api/mcp", UriKind.Relative),
+                    TransportMode = HttpTransportMode.StreamableHttp
+                },
+                httpClient,
+                _loggerFactory,
+                ownsHttpClient: false);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(_mcpOptions.ConnectionTimeoutMs);
