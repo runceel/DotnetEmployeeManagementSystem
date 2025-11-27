@@ -5,7 +5,7 @@ namespace BlazorWeb.Services;
 
 /// <summary>
 /// Service for interacting with AI chat functionality using Microsoft.Extensions.AI.IChatClient.
-/// Aspire's AddOllamaApiClient registers IChatClient directly in the DI container,
+/// Aspire's AddOllamaApiClient with AddChatClient chains the IChatClient registration,
 /// so this service uses the standard IChatClient interface for Aspire integration.
 /// </summary>
 public sealed class AiChatService

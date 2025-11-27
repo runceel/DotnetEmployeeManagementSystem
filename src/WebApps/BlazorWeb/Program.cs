@@ -9,10 +9,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
-// Add Ollama client with Aspire service discovery as IChatClient.
-// Aspire's AddOllamaApiClient registers IChatClient directly in the DI container,
-// so services should inject IChatClient rather than OllamaSharp.IOllamaApiClient.
-builder.AddOllamaApiClient("ollama");
+// Add Ollama client with Aspire service discovery.
+// AddOllamaApiClient returns a builder, and AddChatClient chains 
+// the IChatClient registration for use with Microsoft.Extensions.AI.
+// Note: The connection name "ollama-phi3" matches the model resource name from AppHost.cs
+// (created by .AddOllama("ollama").AddModel("phi3"))
+builder.AddOllamaApiClient("ollama-phi3").AddChatClient();
 
 // Configure MCP options
 builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));
