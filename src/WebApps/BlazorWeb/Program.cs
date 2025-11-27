@@ -12,7 +12,9 @@ builder.AddServiceDefaults();
 // Add Ollama client with Aspire service discovery.
 // AddOllamaApiClient returns a builder, and AddChatClient chains 
 // the IChatClient registration for use with Microsoft.Extensions.AI.
-builder.AddOllamaApiClient("ollama").AddChatClient();
+// Note: The connection name "ollama-phi3" matches the model resource name from AppHost.cs
+// (created by .AddOllama("ollama").AddModel("phi3"))
+builder.AddOllamaApiClient("ollama-phi3").AddChatClient();
 
 // Configure MCP options
 builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));
