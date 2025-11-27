@@ -18,17 +18,20 @@ public sealed class McpChatService : IAsyncDisposable
     private readonly ILogger<McpChatService> _logger;
     private readonly McpOptions _mcpOptions;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ConcurrentDictionary<string, McpClient> _connectedClients = new();
     private readonly ConcurrentDictionary<string, IList<McpClientTool>> _serverTools = new();
 
     public McpChatService(
         ILogger<McpChatService> logger,
         IOptions<McpOptions> mcpOptions,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        ILoggerFactory loggerFactory)
     {
         _logger = logger;
         _mcpOptions = mcpOptions.Value;
         _httpClientFactory = httpClientFactory;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -76,7 +79,7 @@ public sealed class McpChatService : IAsyncDisposable
                     TransportMode = HttpTransportMode.StreamableHttp
                 },
                 httpClient,
-                loggerFactory: null,
+                _loggerFactory,
                 ownsHttpClient: false);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

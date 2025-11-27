@@ -20,6 +20,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
     private readonly ILogger<McpAiAgentService> _logger;
     private readonly McpOptions _mcpOptions;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly Dictionary<string, McpClient> _mcpClients = new();
     private readonly Dictionary<string, IList<McpClientTool>> _serverTools = new();
     private readonly List<AIFunction> _aiFunctions = new();
@@ -50,12 +51,14 @@ public sealed class McpAiAgentService : IAsyncDisposable
         IChatClient chatClient,
         ILogger<McpAiAgentService> logger,
         IOptions<McpOptions> mcpOptions,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        ILoggerFactory loggerFactory)
     {
         _chatClient = chatClient;
         _logger = logger;
         _mcpOptions = mcpOptions.Value;
         _httpClientFactory = httpClientFactory;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -133,7 +136,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
                 TransportMode = HttpTransportMode.StreamableHttp
             },
             httpClient,
-            loggerFactory: null,
+            _loggerFactory,
             ownsHttpClient: false);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
