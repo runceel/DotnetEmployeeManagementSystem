@@ -72,10 +72,18 @@ public sealed class McpChatService : IAsyncDisposable
             _logger.LogInformation("Connecting to MCP server: {ServerName} using HttpClient: {HttpClientName}", serverName, httpClientName);
 
             var httpClient = _httpClientFactory.CreateClient(httpClientName);
+            
+            if (httpClient.BaseAddress is null)
+            {
+                _logger.LogError("HttpClient for {ServerName} does not have a BaseAddress configured", serverName);
+                activity?.SetStatus(ActivityStatusCode.Error, "HttpClient BaseAddress not configured");
+                return false;
+            }
+
             var transport = new HttpClientTransport(
                 new HttpClientTransportOptions
                 {
-                    Endpoint = new Uri("/api/mcp", UriKind.Relative),
+                    Endpoint = new Uri(httpClient.BaseAddress, "api/mcp"),
                     TransportMode = HttpTransportMode.StreamableHttp
                 },
                 httpClient,
