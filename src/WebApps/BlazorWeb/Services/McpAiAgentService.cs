@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Text.Json;
 using BlazorWeb.Models;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -18,9 +17,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
 
     private readonly IChatClient _chatClient;
     private readonly ILogger<McpAiAgentService> _logger;
-    private readonly McpOptions _mcpOptions;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILoggerFactory _loggerFactory;
+    private readonly McpConnectionHelper _connectionHelper;
     private readonly Dictionary<string, McpClient> _mcpClients = new();
     private readonly Dictionary<string, IList<McpClientTool>> _serverTools = new();
     private readonly List<AIFunction> _aiFunctions = new();
@@ -50,15 +47,11 @@ public sealed class McpAiAgentService : IAsyncDisposable
     public McpAiAgentService(
         IChatClient chatClient,
         ILogger<McpAiAgentService> logger,
-        IOptions<McpOptions> mcpOptions,
-        IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory)
+        McpConnectionHelper connectionHelper)
     {
         _chatClient = chatClient;
         _logger = logger;
-        _mcpOptions = mcpOptions.Value;
-        _httpClientFactory = httpClientFactory;
-        _loggerFactory = loggerFactory;
+        _connectionHelper = connectionHelper;
     }
 
     /// <summary>
@@ -69,7 +62,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
     /// <summary>
     /// List of available MCP servers
     /// </summary>
-    public IReadOnlyList<McpServerConfiguration> AvailableServers => _mcpOptions.Servers;
+    public IReadOnlyList<McpServerConfiguration> AvailableServers => _connectionHelper.AvailableServers;
 
     /// <summary>
     /// Connected MCP server names
@@ -97,7 +90,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
         _logger.LogInformation("Initializing AI Agent with MCP tools...");
 
         // Connect to all MCP servers
-        foreach (var server in _mcpOptions.Servers)
+        foreach (var server in _connectionHelper.AvailableServers)
         {
             try
             {
@@ -125,32 +118,17 @@ public sealed class McpAiAgentService : IAsyncDisposable
         using var activity = ActivitySource.StartActivity("ConnectToMcpServer");
         activity?.SetTag("server.name", server.Name);
 
-        var httpClientName = $"mcp-{server.Name.ToLowerInvariant()}";
-        _logger.LogInformation("Connecting to MCP server: {ServerName} using HttpClient: {HttpClientName}", server.Name, httpClientName);
+        var result = await _connectionHelper.ConnectToServerAsync(server, cancellationToken);
+        if (result is null)
+        {
+            throw new InvalidOperationException($"Failed to connect to MCP server: {server.Name}");
+        }
 
-        var httpClient = _httpClientFactory.CreateClient(httpClientName);
-        var transport = new HttpClientTransport(
-            new HttpClientTransportOptions
-            {
-                Endpoint = new Uri("/api/mcp", UriKind.Relative),
-                TransportMode = HttpTransportMode.StreamableHttp
-            },
-            httpClient,
-            _loggerFactory,
-            ownsHttpClient: false);
+        _mcpClients[server.Name] = result.Client;
+        _serverTools[server.Name] = result.Tools;
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(_mcpOptions.ConnectionTimeoutMs);
-
-        var client = await McpClient.CreateAsync(transport, cancellationToken: cts.Token);
-        _mcpClients[server.Name] = client;
-
-        // Get tools from server
-        var tools = await client.ListToolsAsync(cancellationToken: cts.Token);
-        _serverTools[server.Name] = tools;
-
-        _logger.LogInformation("Connected to {ServerName}. Tools: {ToolCount}", server.Name, tools.Count);
-        activity?.SetTag("tools.count", tools.Count);
+        _logger.LogInformation("Connected to {ServerName}. Tools: {ToolCount}", server.Name, result.Tools.Count);
+        activity?.SetTag("tools.count", result.Tools.Count);
     }
 
     private void CreateAiFunctionsFromTools()
@@ -213,7 +191,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
             _logger.LogInformation("Calling tool {ToolName} on {ServerName} with args: {Args}",
                 toolName, serverName, JsonSerializer.Serialize(args));
 
-            using var cts = new CancellationTokenSource(_mcpOptions.ToolExecutionTimeoutMs);
+            using var cts = new CancellationTokenSource(_connectionHelper.ToolExecutionTimeoutMs);
             var result = await client.CallToolAsync(toolName, args, cancellationToken: cts.Token);
 
             var responseText = FormatToolResult(result);
@@ -430,7 +408,7 @@ public sealed class McpAiAgentService : IAsyncDisposable
 
         foreach (var (serverName, serverTools) in _serverTools)
         {
-            var server = _mcpOptions.Servers.FirstOrDefault(s => s.Name == serverName);
+            var server = _connectionHelper.AvailableServers.FirstOrDefault(s => s.Name == serverName);
             foreach (var tool in serverTools)
             {
                 tools.Add(new ToolInfo

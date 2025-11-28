@@ -78,6 +78,9 @@ builder.Services.AddHttpClient("mcp-attendanceservice", client =>
 // Add authentication state management service
 builder.Services.AddScoped<AuthStateService>();
 
+// Add MCP connection helper (shared by McpChatService and McpAiAgentService)
+builder.Services.AddScoped<McpConnectionHelper>();
+
 // Add MCP chat service
 builder.Services.AddScoped<McpChatService>();
 
