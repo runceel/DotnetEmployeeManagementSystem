@@ -3,11 +3,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Add Redis for messaging
 var redis = builder.AddRedis("redis");
 
-// Add Ollama with phi3 model for local AI chat
+// Add Ollama with phi4-mini model for local AI chat (supports MCP tool calling)
 var ollama = builder.AddOllama("ollama")
     .WithDataVolume()
     .WithOpenWebUI()
-    .AddModel("phi3");
+    .AddModel("phi4-mini");
 
 // Add SQLite databases
 var employeeDb = builder.AddSqlite("employeedb");

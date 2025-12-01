@@ -18,7 +18,7 @@ public sealed class AiChatService
     /// Default model to use for chat interactions.
     /// Note: The actual model is typically configured via Aspire orchestration.
     /// </summary>
-    public const string DefaultModel = "phi3";
+    public const string DefaultModel = "phi4-mini";
 
     public AiChatService(IChatClient chatClient, ILogger<AiChatService> logger)
     {

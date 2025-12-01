@@ -9,7 +9,7 @@ The AI Chat feature includes:
 - **Microsoft.Extensions.AI**: Uses `IChatClient` for AI interactions
 - **Automatic Tool Calling**: AI analyzes requests and calls MCP tools automatically
 - **Open WebUI**: Browser-based interface for Ollama included
-- **phi3 Model**: Pre-configured small language model with function calling support
+- **phi4-mini Model**: Pre-configured language model with MCP tool calling support
 
 ## Key Features
 
@@ -68,7 +68,7 @@ When you run `dotnet run --project src/AppHost`, the following happens:
 |---------|-------------|--------|
 | **Ollama** | Local LLM server (Docker container) | http://localhost:11434 |
 | **Open WebUI** | Browser-based chat interface | http://localhost:8080 |
-| **phi3 Model** | Pre-downloaded SLM (3.8B params) | Automatically available |
+| **phi4-mini Model** | Pre-downloaded SLM with MCP tool calling | Automatically available |
 | **BlazorWeb** | Main application with AI Chat | See Aspire dashboard |
 
 ### 3. Access AI Chat in BlazorWeb
@@ -90,7 +90,7 @@ When you run `dotnet run --project src/AppHost`, the following happens:
 │  │   Ollama    │    │ Open WebUI  │    │      BlazorWeb      │ │
 │  │  (Docker)   │◄───│  (Docker)   │    │                     │ │
 │  │             │    │             │    │ ┌─────────────────┐ │ │
-│  │  phi3 model │    │ Chat UI     │    │ │ McpAiAgentService│ │ │
+│  │  phi4-mini  │    │ Chat UI     │    │ │ McpAiAgentService│ │ │
 │  └─────────────┘    └─────────────┘    │ │                 │ │ │
 │         │                              │ │ IChatClient +   │ │ │
 │         │                              │ │ MCP Tools       │ │ │
@@ -190,11 +190,11 @@ User Message → IChatClient → AI Analysis → Tool Selection
 The Ollama integration is configured in `src/AppHost/AppHost.cs`:
 
 ```csharp
-// Add Ollama with phi3 model for local AI chat
+// Add Ollama with phi4-mini model for local AI chat (supports MCP tool calling)
 var ollama = builder.AddOllama("ollama")
     .WithDataVolume()        // Persist model data
     .WithOpenWebUI()         // Include browser UI
-    .AddModel("phi3");       // Download phi3 model
+    .AddModel("phi4-mini");  // Download phi4-mini model
 
 // Reference Ollama in BlazorWeb
 builder.AddProject<Projects.BlazorWeb>("blazorweb")
@@ -213,16 +213,16 @@ builder.Services.AddScoped<AiChatService>();
 
 ## Available Models
 
-### Default: phi3 (Recommended)
+### Default: phi4-mini (Recommended)
 
 | Property | Value |
 |----------|-------|
-| **Name** | phi3 |
-| **Parameters** | 3.8B |
-| **Size** | ~2.3GB |
+| **Name** | phi4-mini |
+| **Parameters** | ~3.8B |
+| **Size** | ~2.5GB |
 | **RAM Required** | 8GB |
 | **Speed** | Fast |
-| **Use Case** | JSON generation, code assistance |
+| **Use Case** | MCP tool calling, JSON generation, code assistance |
 
 ### Adding More Models
 
@@ -232,7 +232,7 @@ To add additional models, modify `AppHost.cs`:
 var ollama = builder.AddOllama("ollama")
     .WithDataVolume()
     .WithOpenWebUI()
-    .AddModel("phi3")
+    .AddModel("phi4-mini")
     .AddModel("llama3.2:3b")    // Add Llama 3.2 (3B)
     .AddModel("gemma2:9b");     // Add Gemma 2 (9B)
 ```
@@ -241,7 +241,7 @@ var ollama = builder.AddOllama("ollama")
 
 | Model | Size | RAM | Speed | Best For |
 |-------|------|-----|-------|----------|
-| **phi3** | 3.8B | 8GB | ⚡⚡⚡ | Quick testing, JSON |
+| **phi4-mini** | 3.8B | 8GB | ⚡⚡⚡ | MCP tool calling, JSON |
 | **llama3.2:3b** | 3B | 8GB | ⚡⚡⚡ | General use |
 | **llama3.2** | 8B | 16GB | ⚡⚡ | Complex queries |
 | **gemma2:9b** | 9B | 16GB | ⚡⚡ | High accuracy |
@@ -346,11 +346,11 @@ If BlazorWeb can't connect to Ollama:
 
 ### Model Not Found
 
-If "phi3" model isn't available:
+If "phi4-mini" model isn't available:
 
 ```bash
 # The model should auto-download, but you can manually pull:
-docker exec <ollama-container-id> ollama pull phi3
+docker exec <ollama-container-id> ollama pull phi4-mini
 ```
 
 ## Performance Tips
@@ -415,7 +415,7 @@ await foreach (var chunk in AiChat.GenerateStreamAsync(prompt))
 
 ### Model Information
 
-- [phi3 Technical Report](https://arxiv.org/abs/2404.14219)
+- [Phi-4-mini Model](https://ollama.com/library/phi4-mini)
 - [Ollama Model Library](https://ollama.com/library)
 
 ## Summary
@@ -424,7 +424,7 @@ With Aspire's Ollama integration:
 
 1. ✅ **Zero Setup**: Just run `dotnet run --project src/AppHost`
 2. ✅ **Auto-Start**: Ollama + Open WebUI start automatically
-3. ✅ **Pre-Configured**: phi3 model ready to use
+3. ✅ **Pre-Configured**: phi4-mini model ready to use with MCP tool calling support
 4. ✅ **Integrated**: BlazorWeb has AiChatService for AI features
 5. ✅ **Privacy**: All processing is local
 
