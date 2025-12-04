@@ -222,4 +222,221 @@ public class LeaveRequestTests
         // Assert
         Assert.Equal(1, days);
     }
+
+    [Fact]
+    public void Constructor_WithNullReason_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, null!));
+    }
+
+    [Fact]
+    public void Constructor_WithReasonOver1000Characters_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var longReason = new string('あ', 1001);
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, longReason));
+    }
+
+    [Fact]
+    public void Constructor_WithReasonExactly1000Characters_ShouldCreateLeaveRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var exactReason = new string('あ', 1000);
+
+        // Act
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, exactReason);
+
+        // Assert
+        Assert.Equal(exactReason, leaveRequest.Reason);
+    }
+
+    [Fact]
+    public void Constructor_WithWhitespaceReason_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "   "));
+    }
+
+    [Fact]
+    public void Approve_WithEmptyApproverId_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "有給休暇");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            leaveRequest.Approve(Guid.Empty));
+    }
+
+    [Fact]
+    public void Reject_WithEmptyApproverId_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "有給休暇");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            leaveRequest.Reject(Guid.Empty));
+    }
+
+    [Fact]
+    public void Cancel_WhenApproved_ShouldCancelRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var approverId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "有給休暇");
+        leaveRequest.Approve(approverId);
+
+        // Act
+        leaveRequest.Cancel();
+
+        // Assert
+        Assert.Equal(LeaveRequestStatus.Cancelled, leaveRequest.Status);
+    }
+
+    [Fact]
+    public void Constructor_WithSickLeaveType_ShouldCreateLeaveRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+
+        // Act
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.SickLeave, startDate, endDate, "体調不良");
+
+        // Assert
+        Assert.Equal(LeaveType.SickLeave, leaveRequest.Type);
+    }
+
+    [Fact]
+    public void Constructor_WithSpecialLeaveType_ShouldCreateLeaveRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+
+        // Act
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.SpecialLeave, startDate, endDate, "慶弔休暇");
+
+        // Assert
+        Assert.Equal(LeaveType.SpecialLeave, leaveRequest.Type);
+    }
+
+    [Fact]
+    public void Constructor_WithUnpaidLeaveType_ShouldCreateLeaveRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+
+        // Act
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.UnpaidLeave, startDate, endDate, "私用");
+
+        // Assert
+        Assert.Equal(LeaveType.UnpaidLeave, leaveRequest.Type);
+    }
+
+    [Fact]
+    public void Constructor_ShouldStoreOnlyDatePartOfStartAndEndDate()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDateWithTime = DateTime.UtcNow.Date.AddDays(1).AddHours(10).AddMinutes(30);
+        var endDateWithTime = DateTime.UtcNow.Date.AddDays(3).AddHours(14).AddMinutes(45);
+
+        // Act
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDateWithTime, endDateWithTime, "有給休暇");
+
+        // Assert
+        Assert.Equal(startDateWithTime.Date, leaveRequest.StartDate);
+        Assert.Equal(endDateWithTime.Date, leaveRequest.EndDate);
+    }
+
+    [Fact]
+    public void Approve_WithoutComment_ShouldApproveRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var approverId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "有給休暇");
+
+        // Act
+        leaveRequest.Approve(approverId);
+
+        // Assert
+        Assert.Equal(LeaveRequestStatus.Approved, leaveRequest.Status);
+        Assert.Equal(approverId, leaveRequest.ApproverId);
+        Assert.Null(leaveRequest.ApproverComment);
+    }
+
+    [Fact]
+    public void Reject_WithoutComment_ShouldRejectRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var approverId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date.AddDays(1);
+        var endDate = startDate.AddDays(2);
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "有給休暇");
+
+        // Act
+        leaveRequest.Reject(approverId);
+
+        // Assert
+        Assert.Equal(LeaveRequestStatus.Rejected, leaveRequest.Status);
+        Assert.Equal(approverId, leaveRequest.ApproverId);
+        Assert.Null(leaveRequest.ApproverComment);
+    }
+
+    [Fact]
+    public void Constructor_WithEndDateEqualToToday_ShouldCreateLeaveRequest()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var startDate = DateTime.UtcNow.Date;
+        var endDate = DateTime.UtcNow.Date;
+
+        // Act
+        var leaveRequest = new LeaveRequest(employeeId, LeaveType.PaidLeave, startDate, endDate, "有給休暇");
+
+        // Assert
+        Assert.Equal(startDate, leaveRequest.StartDate);
+        Assert.Equal(endDate, leaveRequest.EndDate);
+    }
 }
