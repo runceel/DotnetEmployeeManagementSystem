@@ -248,4 +248,146 @@ public class EmployeeServiceTests
         _mockRepository.Verify(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()), Times.Once);
         _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task CreateAsync_WithNonExistingDepartment_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var request = new CreateEmployeeRequest
+        {
+            FirstName = "太郎",
+            LastName = "山田",
+            Email = "yamada.taro@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "存在しない部署",
+            Position = "エンジニア"
+        };
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        _mockDepartmentRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { TestDepartment, TestDepartment2 });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CreateAsync(request));
+        Assert.Contains("存在しない部署", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithNonExistingDepartment_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
+
+        var request = new UpdateEmployeeRequest
+        {
+            FirstName = "次郎",
+            LastName = "田中",
+            Email = "tanaka.jiro@example.com",
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "存在しない部署",
+            Position = "マネージャー"
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee);
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Employee?)null);
+
+        _mockDepartmentRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { TestDepartment, TestDepartment2 });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.UpdateAsync(employeeId, request));
+        Assert.Contains("存在しない部署", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithDuplicateEmailForOtherEmployee_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var otherEmployeeId = Guid.NewGuid();
+        
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
+
+        var otherEmployee = new Employee("花子", "佐藤", "sato.hanako@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "デザイナー");
+
+        var request = new UpdateEmployeeRequest
+        {
+            FirstName = "次郎",
+            LastName = "田中",
+            Email = "sato.hanako@example.com", // 他の従業員のメールアドレス
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "マネージャー"
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee);
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(otherEmployee);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.UpdateAsync(employeeId, request));
+        Assert.Contains("sato.hanako@example.com", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithSameEmailAsCurrentEmployee_ShouldUpdateEmployee()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee("太郎", "山田", "yamada.taro@example.com", 
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), TestDepartmentId, "エンジニア");
+
+        // Use reflection to set the Id (since it's private set)
+        typeof(Employee).GetProperty("Id")!.SetValue(employee, employeeId);
+
+        var request = new UpdateEmployeeRequest
+        {
+            FirstName = "次郎",
+            LastName = "田中",
+            Email = "yamada.taro@example.com", // 同じメールアドレス
+            HireDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Department = "開発部",
+            Position = "マネージャー"
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(employeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee);
+
+        _mockRepository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(employee); // 同じ従業員
+
+        // Act
+        var result = await _service.UpdateAsync(employeeId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(request.FirstName, result.FirstName);
+        _mockRepository.Verify(r => r.UpdateAsync(employee, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithEmptyRepository_ShouldReturnEmptyList()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Employee>());
+
+        // Act
+        var result = await _service.GetAllAsync();
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
 }

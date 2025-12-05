@@ -218,4 +218,68 @@ public class DepartmentServiceTests
         _mockRepository.Verify(r => r.HasEmployeesAsync(department.Name, It.IsAny<CancellationToken>()), Times.Once);
         _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task GetAllAsync_WithEmptyRepository_ShouldReturnEmptyList()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Department>());
+
+        // Act
+        var result = await _service.GetAllAsync();
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldCallAddAsync()
+    {
+        // Arrange
+        var request = new CreateDepartmentRequest
+        {
+            Name = "人事部",
+            Description = "人事関連業務を担当する部署"
+        };
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Department>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Department d, CancellationToken ct) => d);
+
+        // Act
+        var result = await _service.CreateAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Department>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldUpdateNameAndDescription()
+    {
+        // Arrange
+        var departmentId = Guid.NewGuid();
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+
+        var request = new UpdateDepartmentRequest
+        {
+            Name = "技術部",
+            Description = "技術関連業務を担当する部署"
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(departmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(department);
+
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Department>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Department d, CancellationToken ct) => d);
+
+        // Act
+        var result = await _service.UpdateAsync(departmentId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(request.Name, result.Name);
+        Assert.Equal(request.Description, result.Description);
+    }
 }

@@ -322,4 +322,101 @@ public class AttendanceAnomalyDetectorTests
     }
 
     #endregion
+
+    #region Edge Case Tests
+
+    [Fact]
+    public void IsLateArrival_WhenCheckInAt0900And1Second_ReturnsTrue()
+    {
+        // Arrange - 1秒でも遅刻とみなすか確認
+        var checkInTime = new DateTime(2025, 1, 15, 9, 0, 1);
+
+        // Act
+        var result = _detector.IsLateArrival(checkInTime);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsEarlyLeaving_WhenWorkingExactly4Hours_ReturnsTrue()
+    {
+        // Arrange - ちょうど4時間労働で、17時前退勤の場合
+        var checkInTime = new DateTime(2025, 1, 15, 12, 0, 0);
+        var checkOutTime = new DateTime(2025, 1, 15, 16, 0, 0); // 4 hours exactly
+
+        // Act
+        var result = _detector.IsEarlyLeaving(checkInTime, checkOutTime);
+
+        // Assert
+        Assert.True(result); // 4時間以上勤務かつ17時前退勤なので早退
+    }
+
+    [Fact]
+    public void IsOvertime_WhenWorkHoursIs9Point99_ReturnsFalse()
+    {
+        // Arrange - 閾値直前
+        var workHours = 9.99;
+
+        // Act
+        var result = _detector.IsOvertime(workHours);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void CalculateLateMinutes_WhenLate60Minutes_Returns60()
+    {
+        // Arrange
+        var checkInTime = new DateTime(2025, 1, 15, 10, 0, 0);
+
+        // Act
+        var result = _detector.CalculateLateMinutes(checkInTime);
+
+        // Assert
+        Assert.Equal(60, result);
+    }
+
+    [Fact]
+    public void CalculateLateMinutes_WhenOnTime_Returns0()
+    {
+        // Arrange
+        var checkInTime = new DateTime(2025, 1, 15, 9, 0, 0);
+
+        // Act
+        var result = _detector.CalculateLateMinutes(checkInTime);
+
+        // Assert
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void CalculateOvertimeHours_WhenWorkHoursIs9Point5_Returns1Point5()
+    {
+        // Arrange - 8時間+1.5時間残業
+        var workHours = 9.5;
+
+        // Act
+        var result = _detector.CalculateOvertimeHours(workHours);
+
+        // Assert
+        Assert.Equal(0, result); // 10時間未満なので残業とは判定されない
+    }
+
+    [Fact]
+    public void IsEarlyLeaving_WhenWorkingExactly8HoursAndCheckOutAt1700_ReturnsFalse()
+    {
+        // Arrange
+        var checkInTime = new DateTime(2025, 1, 15, 9, 0, 0);
+        var checkOutTime = new DateTime(2025, 1, 15, 17, 0, 0);
+
+        // Act
+        var result = _detector.IsEarlyLeaving(checkInTime, checkOutTime);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    #endregion
 }

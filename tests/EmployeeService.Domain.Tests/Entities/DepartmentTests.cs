@@ -114,4 +114,53 @@ public class DepartmentTests
         Assert.Throws<ArgumentException>(() => 
             department.Update("営業部", ""));
     }
+
+    [Fact]
+    public void Constructor_WithWhitespaceName_ShouldThrowArgumentException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => 
+            new Department("   ", "説明"));
+    }
+
+    [Fact]
+    public void Constructor_WithWhitespaceDescription_ShouldThrowArgumentException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => 
+            new Department("開発部", "   "));
+    }
+
+    [Fact]
+    public void Update_WithWhitespaceName_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => 
+            department.Update("   ", "説明"));
+    }
+
+    [Fact]
+    public void Update_WithWhitespaceDescription_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => 
+            department.Update("営業部", "   "));
+    }
+
+    [Fact]
+    public void Constructor_ShouldInitializeEmptyEmployeesCollection()
+    {
+        // Arrange & Act
+        var department = new Department("開発部", "ソフトウェア開発を担当する部署");
+
+        // Assert
+        Assert.NotNull(department.Employees);
+        Assert.Empty(department.Employees);
+    }
 }
