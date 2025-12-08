@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -123,5 +124,77 @@ public static class Extensions
         }
 
         return app;
+    }
+
+    /// <summary>
+    /// MCP サーバーの共通設定を追加します
+    /// </summary>
+    /// <param name="builder">ホストアプリケーションビルダー</param>
+    /// <param name="additionalAllowedOrigins">追加で許可するオリジン（開発環境のみ）</param>
+    /// <returns>ホストアプリケーションビルダー</returns>
+    public static TBuilder AddMcpServerDefaults<TBuilder>(
+        this TBuilder builder,
+        string[]? additionalAllowedOrigins = null) where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddHttpContextAccessor();
+
+        builder.Services.AddMcpServer()
+            .WithHttpTransport()
+            .WithToolsFromAssembly();
+
+        builder.Services.AddCors(options =>
+        {
+            ConfigureMcpCorsPolicy(options, builder.Environment, builder.Configuration, additionalAllowedOrigins);
+        });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// MCP 関連のミドルウェアとエンドポイントを設定します
+    /// </summary>
+    /// <param name="app">Web アプリケーション</param>
+    /// <param name="mcpEndpoint">MCP エンドポイントのパス（デフォルト: /api/mcp）</param>
+    /// <returns>Web アプリケーション</returns>
+    public static WebApplication UseMcpServerDefaults(
+        this WebApplication app,
+        string mcpEndpoint = "/api/mcp")
+    {
+        app.UseCors("McpPolicy");
+        app.MapMcp(mcpEndpoint);
+
+        return app;
+    }
+
+    private static void ConfigureMcpCorsPolicy(
+        Microsoft.AspNetCore.Cors.Infrastructure.CorsOptions options,
+        IHostEnvironment environment,
+        IConfiguration configuration,
+        string[]? additionalAllowedOrigins)
+    {
+        options.AddPolicy("McpPolicy", policy =>
+        {
+            if (environment.IsDevelopment())
+            {
+                // 開発環境でも特定オリジンのみ許可（セキュリティ改善）
+                var devOrigins = new[] { "http://localhost:5000", "https://localhost:5001", "http://localhost:3000", "https://localhost:3001" };
+                var allOrigins = devOrigins.Concat(additionalAllowedOrigins ?? []).ToArray();
+                
+                policy.WithOrigins(allOrigins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+            else
+            {
+                var allowedOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+                var allOrigins = allowedOrigins.Concat(additionalAllowedOrigins ?? []).ToArray();
+                
+                policy.WithOrigins(allOrigins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+        });
     }
 }
