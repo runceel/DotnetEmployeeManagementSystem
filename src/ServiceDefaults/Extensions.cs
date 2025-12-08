@@ -177,20 +177,21 @@ public static class Extensions
             if (environment.IsDevelopment())
             {
                 // 開発環境でも特定オリジンのみ許可（セキュリティ改善）
-                var devOrigins = new[] { "http://localhost:5000", "https://localhost:5001", "http://localhost:3000", "https://localhost:3001" };
-                var allOrigins = devOrigins.Concat(additionalAllowedOrigins ?? []).ToArray();
+                var defaultDevOrigins = configuration.GetSection("Cors:DevelopmentOrigins").Get<string[]>()
+                    ?? ["http://localhost:5000", "https://localhost:5001", "http://localhost:3000", "https://localhost:3001"];
+                var devAllowedOrigins = defaultDevOrigins.Concat(additionalAllowedOrigins ?? []).ToArray();
                 
-                policy.WithOrigins(allOrigins)
+                policy.WithOrigins(devAllowedOrigins)
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();
             }
             else
             {
-                var allowedOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
-                var allOrigins = allowedOrigins.Concat(additionalAllowedOrigins ?? []).ToArray();
+                var configuredOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+                var prodAllowedOrigins = configuredOrigins.Concat(additionalAllowedOrigins ?? []).ToArray();
                 
-                policy.WithOrigins(allOrigins)
+                policy.WithOrigins(prodAllowedOrigins)
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();
