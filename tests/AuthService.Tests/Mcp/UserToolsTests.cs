@@ -21,7 +21,7 @@ public class UserToolsTests
         var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(
             userStoreMock.Object,
-            null, null, null, null, null, null, null, null);
+            null!, null!, null!, null!, null!, null!, null!, null!);
         
         _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
         _loggerMock = new Mock<ILogger<UserTools>>();
