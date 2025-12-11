@@ -28,8 +28,12 @@
 - **[開発ガイド](docs/development-guide.md)** - コーディング規約、新機能追加方法、テスト戦略
 
 ### 4. UI/UXデザイン（**UI画面追加時は必読**）
-- **[デザインカタログ](docs/design-catalog/README.md)** - MudBlazor UIパターン、コンポーネント使用ガイド
-- **[画面パターン集](docs/design-catalog/page-patterns.md)** - 一覧/詳細/編集/ダッシュボード画面テンプレート
+- **[デザインカタログ](docs/design-catalog/README.md)** - MudBlazor UIパターン、コンポーネント使用ガイド（インデックス）
+- **画面パターン**（必要なパターンのみ参照してトークン効率化）
+  - **[一覧画面](docs/design-catalog/patterns/list-page.md)** - データ一覧、CRUD操作
+  - **[詳細画面](docs/design-catalog/patterns/detail-page.md)** - 単一データ詳細表示
+  - **[編集画面](docs/design-catalog/patterns/edit-dialog.md)** - ダイアログフォーム
+  - **[ダッシュボード](docs/design-catalog/patterns/dashboard.md)** - 統計、アクティビティ表示
 - **[推奨・非推奨ルール](docs/design-catalog/dos-and-donts.md)** - UIベストプラクティス
 - **[デザイントークン](docs/design-catalog/tokens.md)** - カラー、タイポグラフィ、スペーシング定義
 
@@ -166,8 +170,11 @@ Infrastructure (Data Access)
 
 | タスク | 参照ドキュメント |
 |--------|-----------------|
-| **UI画面を追加** | **[design-catalog/README.md](docs/design-catalog/README.md), [page-patterns.md](docs/design-catalog/page-patterns.md)** |
-| **UI画面の一覧/詳細/編集テンプレート** | **[page-patterns.md](docs/design-catalog/page-patterns.md)** |
+| **UI画面を追加** | **[design-catalog/README.md](docs/design-catalog/README.md)（インデックス）** |
+| **一覧画面テンプレート** | **[patterns/list-page.md](docs/design-catalog/patterns/list-page.md)** |
+| **詳細画面テンプレート** | **[patterns/detail-page.md](docs/design-catalog/patterns/detail-page.md)** |
+| **編集画面テンプレート** | **[patterns/edit-dialog.md](docs/design-catalog/patterns/edit-dialog.md)** |
+| **ダッシュボードテンプレート** | **[patterns/dashboard.md](docs/design-catalog/patterns/dashboard.md)** |
 | **UIコンポーネント選択・ベストプラクティス** | **[dos-and-donts.md](docs/design-catalog/dos-and-donts.md)** |
 | **UIカラー・スペーシング・タイポグラフィ** | **[tokens.md](docs/design-catalog/tokens.md)** |
 | 新しいエンティティを追加 | [development-guide.md#新機能の追加](docs/development-guide.md) |
@@ -252,7 +259,11 @@ public void MethodName_Scenario_ExpectedBehavior()
 
 #### ✅ 基本設計
 - [ ] **デザインカタログを参照**（[design-catalog/README.md](docs/design-catalog/README.md)）
-- [ ] **画面パターンを選択**（一覧/詳細/編集/ダッシュボード from [page-patterns.md](docs/design-catalog/page-patterns.md)）
+- [ ] **画面パターンを選択**
+  - 一覧画面: [list-page.md](docs/design-catalog/patterns/list-page.md)
+  - 詳細画面: [detail-page.md](docs/design-catalog/patterns/detail-page.md)
+  - 編集画面: [edit-dialog.md](docs/design-catalog/patterns/edit-dialog.md)
+  - ダッシュボード: [dashboard.md](docs/design-catalog/patterns/dashboard.md)
 - [ ] **類似の既存画面を参照**（`src/WebApps/BlazorWeb/Components/Pages/`）
 
 #### ✅ MudBlazorコンポーネント
@@ -301,10 +312,10 @@ public void MethodName_Scenario_ExpectedBehavior()
 
 ```razor
 <!-- 1. 画面タイプを特定 -->
-一覧画面? → page-patterns.md の「一覧画面パターン」を使用
-詳細画面? → page-patterns.md の「詳細画面パターン」を使用
-編集画面? → page-patterns.md の「編集画面パターン」を使用
-ダッシュボード? → page-patterns.md の「ダッシュボードパターン」を使用
+一覧画面? → patterns/list-page.md を使用
+詳細画面? → patterns/detail-page.md を使用
+編集画面? → patterns/edit-dialog.md を使用
+ダッシュボード? → patterns/dashboard.md を使用
 
 <!-- 2. テンプレートをコピー＆カスタマイズ -->
 @page "/items"
@@ -421,6 +432,7 @@ dotnet format
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-11 | 1.2.1 | デザインカタログをパターン別ファイルに分割（AIトークン効率化） |
 | 2025-12-11 | 1.2 | UIデザインカタログ追加、UI開発ガイドライン・チェックリスト策定 |
 | 2025-11-15 | 1.1 | .NET 10 / Aspire 13.0.0 への更新 |
 | 2025-11-09 | 1.0 | 初版作成 - ドキュメント管理ルール策定 |
