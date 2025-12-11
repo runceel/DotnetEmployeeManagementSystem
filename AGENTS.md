@@ -27,7 +27,17 @@
 ### 3. 開発作業
 - **[開発ガイド](docs/development-guide.md)** - コーディング規約、新機能追加方法、テスト戦略
 
-### 4. 特定領域
+### 4. UI/UXデザイン（**UI画面追加時は必読**）
+- **[デザインカタログ](docs/design-catalog/README.md)** - MudBlazor UIパターン、コンポーネント使用ガイド（インデックス）
+- **画面パターン**（必要なパターンのみ参照してトークン効率化）
+  - **[一覧画面](docs/design-catalog/patterns/list-page.md)** - データ一覧、CRUD操作
+  - **[詳細画面](docs/design-catalog/patterns/detail-page.md)** - 単一データ詳細表示
+  - **[編集画面](docs/design-catalog/patterns/edit-dialog.md)** - ダイアログフォーム
+  - **[ダッシュボード](docs/design-catalog/patterns/dashboard.md)** - 統計、アクティビティ表示
+- **[推奨・非推奨ルール](docs/design-catalog/dos-and-donts.md)** - UIベストプラクティス
+- **[デザイントークン](docs/design-catalog/tokens.md)** - カラー、タイポグラフィ、スペーシング定義
+
+### 5. 特定領域
 - **[データベース管理](docs/database.md)** - マイグレーション、シードデータ、クエリのベストプラクティス
 - **[通知サービス](docs/notification-service.md)** - イベント駆動通知システムの詳細
 - **[Aspireダッシュボード](docs/aspire-dashboard.md)** - 監視、デバッグ、トレース方法
@@ -160,6 +170,13 @@ Infrastructure (Data Access)
 
 | タスク | 参照ドキュメント |
 |--------|-----------------|
+| **UI画面を追加** | **[design-catalog/README.md](docs/design-catalog/README.md)（インデックス）** |
+| **一覧画面テンプレート** | **[patterns/list-page.md](docs/design-catalog/patterns/list-page.md)** |
+| **詳細画面テンプレート** | **[patterns/detail-page.md](docs/design-catalog/patterns/detail-page.md)** |
+| **編集画面テンプレート** | **[patterns/edit-dialog.md](docs/design-catalog/patterns/edit-dialog.md)** |
+| **ダッシュボードテンプレート** | **[patterns/dashboard.md](docs/design-catalog/patterns/dashboard.md)** |
+| **UIコンポーネント選択・ベストプラクティス** | **[dos-and-donts.md](docs/design-catalog/dos-and-donts.md)** |
+| **UIカラー・スペーシング・タイポグラフィ** | **[tokens.md](docs/design-catalog/tokens.md)** |
 | 新しいエンティティを追加 | [development-guide.md#新機能の追加](docs/development-guide.md) |
 | 新しいAPIエンドポイントを追加 | [development-guide.md](docs/development-guide.md) |
 | データベーススキーマ変更 | [database.md#マイグレーション](docs/database.md) |
@@ -234,6 +251,127 @@ public void MethodName_Scenario_ExpectedBehavior()
 - インターフェースベースの設計
 - サービスライフタイム適切に管理（Scoped, Transient, Singleton）
 
+## 🎨 UI開発ガイドライン
+
+### UI画面追加時のチェックリスト
+
+新しいUI画面を作成・修正する際は、以下を必ず確認してください：
+
+#### ✅ 基本設計
+- [ ] **デザインカタログを参照**（[design-catalog/README.md](docs/design-catalog/README.md)）
+- [ ] **画面パターンを選択**
+  - 一覧画面: [list-page.md](docs/design-catalog/patterns/list-page.md)
+  - 詳細画面: [detail-page.md](docs/design-catalog/patterns/detail-page.md)
+  - 編集画面: [edit-dialog.md](docs/design-catalog/patterns/edit-dialog.md)
+  - ダッシュボード: [dashboard.md](docs/design-catalog/patterns/dashboard.md)
+- [ ] **類似の既存画面を参照**（`src/WebApps/BlazorWeb/Components/Pages/`）
+
+#### ✅ MudBlazorコンポーネント
+- [ ] MudBlazorコンポーネントを優先使用（生のHTML/CSSは最小限）
+- [ ] レスポンシブデザイン（`MudGrid`と`Breakpoint`使用）
+- [ ] 適切なVariant指定（フォームは`Variant.Outlined`で統一）
+
+#### ✅ 状態管理
+- [ ] **ローディング状態を実装**（`MudProgressCircular`または`MudSkeleton`）
+- [ ] **エラー状態を実装**（`MudAlert` + 再試行ボタン）
+- [ ] **空状態を実装**（データなし時の`MudAlert`）
+- [ ] 状態フラグ（`_loading`, `_error`, `_errorMessage`）を適切に管理
+
+#### ✅ エラーハンドリング
+- [ ] try-catchで例外を捕捉
+- [ ] 具体的なエラーメッセージを表示
+- [ ] Snackbarで操作結果を通知（成功/失敗）
+- [ ] UnauthorizedAccessExceptionなど特定例外を適切に処理
+
+#### ✅ 認証・認可
+- [ ] 認証チェックを実装（`AuthStateService.IsAuthenticated`）
+- [ ] 権限チェックを実装（`AuthStateService.IsAdmin`等）
+- [ ] 権限に応じたUI表示切り替え
+
+#### ✅ バリデーション
+- [ ] MudFormでバリデーション実装
+- [ ] Required属性とRequiredErrorメッセージ設定
+- [ ] フォーム有効性に応じた送信ボタン制御（`Disabled="!_isValid"`）
+
+#### ✅ UI/UX
+- [ ] **日本語UI文言を一貫使用**（英語混在NG）
+- [ ] 日付フォーマット統一（`yyyy/MM/dd` or `yyyy年MM月dd日`）
+- [ ] 適切なアイコン使用（`Icons.Material.Filled.*`）
+- [ ] PageTitle設定（例: `<PageTitle>従業員一覧 - 従業員管理システム</PageTitle>`）
+- [ ] Breadcrumbs実装（詳細画面等）
+
+#### ✅ パフォーマンス
+- [ ] 非同期メソッド使用（`async`/`await`）
+- [ ] 大量データには仮想化検討（`Virtualize`コンポーネント）
+
+#### ✅ 参照ドキュメント確認
+- [ ] [dos-and-donts.md](docs/design-catalog/dos-and-donts.md) でベストプラクティス確認
+- [ ] [tokens.md](docs/design-catalog/tokens.md) でデザイントークン参照
+
+### UI開発クイックスタート
+
+```razor
+<!-- 1. 画面タイプを特定 -->
+一覧画面? → patterns/list-page.md を使用
+詳細画面? → patterns/detail-page.md を使用
+編集画面? → patterns/edit-dialog.md を使用
+ダッシュボード? → patterns/dashboard.md を使用
+
+<!-- 2. テンプレートをコピー＆カスタマイズ -->
+@page "/items"
+@using Shared.Contracts.ItemService
+@inject IItemApiClient ItemApiClient
+@inject ISnackbar Snackbar
+
+<PageTitle>項目一覧 - 従業員管理システム</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (_error)
+{
+    <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+}
+else
+{
+    <MudTable Items="@_items">...</MudTable>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _error = false;
+    private string _errorMessage = string.Empty;
+    private IEnumerable<ItemDto>? _items;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadItems();
+    }
+    
+    private async Task LoadItems()
+    {
+        _loading = true;
+        _error = false;
+        try
+        {
+            _items = await ItemApiClient.GetItemsAsync();
+            Snackbar.Add("データを読み込みました。", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _error = true;
+            _errorMessage = ex.Message;
+            Snackbar.Add($"エラー: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
+```
+
 ## 🚀 デプロイメント
 
 ### 開発環境
@@ -294,6 +432,8 @@ dotnet format
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-11 | 1.2.1 | デザインカタログをパターン別ファイルに分割（AIトークン効率化） |
+| 2025-12-11 | 1.2 | UIデザインカタログ追加、UI開発ガイドライン・チェックリスト策定 |
 | 2025-11-15 | 1.1 | .NET 10 / Aspire 13.0.0 への更新 |
 | 2025-11-09 | 1.0 | 初版作成 - ドキュメント管理ルール策定 |
 
