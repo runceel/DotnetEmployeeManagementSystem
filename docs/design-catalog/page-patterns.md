@@ -122,7 +122,7 @@ else
             }
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="ID">@context.Id.ToString("N")[..8]...</MudTd>
+            <MudTd DataLabel="ID">@context.Id.ToString("N").Substring(0, 8)...</MudTd>
             <MudTd DataLabel="名前">@context.Name</MudTd>
             <MudTd DataLabel="作成日時">@context.CreatedAt.ToString("yyyy/MM/dd")</MudTd>
             <MudTd DataLabel="アクション">
@@ -916,6 +916,8 @@ else
         }
     }
 
+    // タイムスタンプ（UTC）から相対時間表示を生成
+    // 例: "5分前", "2時間前", "3日前"
     private string GetRelativeTime(DateTime timestamp)
     {
         var now = DateTime.UtcNow;
