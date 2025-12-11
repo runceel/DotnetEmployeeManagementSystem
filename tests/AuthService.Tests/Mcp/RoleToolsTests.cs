@@ -22,12 +22,12 @@ public class RoleToolsTests
         var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(
             userStoreMock.Object,
-            null, null, null, null, null, null, null, null);
+            null!, null!, null!, null!, null!, null!, null!, null!);
 
         var roleStoreMock = new Mock<IRoleStore<IdentityRole>>();
         _roleManagerMock = new Mock<RoleManager<IdentityRole>>(
             roleStoreMock.Object,
-            null, null, null, null);
+            null!, null!, null!, null!);
         
         _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
         _loggerMock = new Mock<ILogger<RoleTools>>();
