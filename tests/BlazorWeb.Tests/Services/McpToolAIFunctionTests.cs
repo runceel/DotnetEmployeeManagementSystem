@@ -93,31 +93,12 @@ public class McpToolAIFunctionTests
         
         await wrappedFunction.InvokeAsync(arguments);
 
-        // Assert - Inner function should receive arguments wrapped
+        // Assert - AIFunctionFactory automatically unwraps the "arguments" parameter
+        // and binds it directly to the IDictionary<string, object?> parameter
         Assert.NotNull(receivedArguments);
-        
-        // The inner function receives AIFunctionArguments directly mapped to the parameter
-        // Since the signature is (IDictionary<string, object?> arguments), it will bind to { arguments: {...} }
-        // Let's verify the actual behavior
-        if (receivedArguments.ContainsKey("arguments"))
-        {
-            // Expected behavior: wrapped
-            var innerArgs = receivedArguments["arguments"] as Dictionary<string, object?>;
-            Assert.NotNull(innerArgs);
-            Assert.Equal("123", innerArgs["employeeId"]);
-            Assert.Equal("John", innerArgs["firstName"]);
-        }
-        else if (receivedArguments.ContainsKey("employeeId"))
-        {
-            // Alternative: arguments are passed directly (this would be the current behavior)
-            // This means AIFunctionFactory is smart enough to bind directly
-            Assert.Equal("123", receivedArguments["employeeId"]);
-            Assert.Equal("John", receivedArguments["firstName"]);
-        }
-        else
-        {
-            Assert.Fail($"Unexpected arguments structure: {string.Join(", ", receivedArguments.Keys)}");
-        }
+        Assert.Equal(2, receivedArguments.Count);
+        Assert.Equal("123", receivedArguments["employeeId"]);
+        Assert.Equal("John", receivedArguments["firstName"]);
     }
 
     [Fact]

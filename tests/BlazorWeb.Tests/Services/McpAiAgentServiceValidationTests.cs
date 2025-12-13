@@ -99,15 +99,25 @@ public class McpAiAgentServiceValidationTests
 
         var args = new Dictionary<string, object?>();
 
-        // Verify no required fields
+        // Verify no required fields - if "required" is missing or empty, validation should pass
         var hasRequired = inputSchema.TryGetProperty("required", out var required);
-        if (hasRequired)
+        
+        // Simulate validation logic: no required fields means no validation errors
+        var missingFields = new List<string>();
+        if (hasRequired && required.ValueKind == JsonValueKind.Array)
         {
-            Assert.Empty(required.EnumerateArray());
+            foreach (var field in required.EnumerateArray())
+            {
+                var fieldName = field.GetString();
+                if (fieldName != null && !args.ContainsKey(fieldName))
+                {
+                    missingFields.Add(fieldName);
+                }
+            }
         }
         
-        // No required fields means validation should always pass
-        Assert.True(true); // This should always pass
+        // Assert: With no required fields, there should be no missing fields
+        Assert.Empty(missingFields);
     }
 
     [Fact]
