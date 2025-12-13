@@ -64,15 +64,6 @@ public class McpToolAIFunctionTests
             (IDictionary<string, object?>? arguments) =>
             {
                 receivedArguments = arguments?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                // Debug: Log what we received
-                Console.WriteLine($"Received {receivedArguments?.Count ?? 0} arguments:");
-                if (receivedArguments != null)
-                {
-                    foreach (var kvp in receivedArguments)
-                    {
-                        Console.WriteLine($"  {kvp.Key} = {kvp.Value} ({kvp.Value?.GetType().Name})");
-                    }
-                }
                 return "OK";
             },
             new AIFunctionFactoryOptions
@@ -104,7 +95,6 @@ public class McpToolAIFunctionTests
 
         // Assert - Inner function should receive arguments wrapped
         Assert.NotNull(receivedArguments);
-        Console.WriteLine($"ReceivedArguments keys: {string.Join(", ", receivedArguments.Keys)}");
         
         // The inner function receives AIFunctionArguments directly mapped to the parameter
         // Since the signature is (IDictionary<string, object?> arguments), it will bind to { arguments: {...} }
