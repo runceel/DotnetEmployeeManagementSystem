@@ -554,7 +554,7 @@ public sealed class ToolInfo
 /// AIFunction wrapper that exposes MCP tool's InputSchema to the AI.
 /// This allows the AI to understand the required parameters and their types.
 /// </summary>
-internal sealed class McpToolAIFunction : AIFunction
+public sealed class McpToolAIFunction : AIFunction
 {
     private readonly AIFunction _innerFunction;
     private readonly JsonElement _mcpInputSchema;
