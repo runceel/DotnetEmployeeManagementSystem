@@ -1,13 +1,12 @@
+using Aspire.Hosting.GitHub;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Redis for messaging
 var redis = builder.AddRedis("redis");
 
-// Add Ollama with phi4-mini model for local AI chat (supports MCP tool calling)
-var ollama = builder.AddOllama("ollama")
-    .WithDataVolume()
-    .WithOpenWebUI()
-    .AddModel("phi4-mini");
+// Add GitHub Model (GPT-4.1) for AI chat functionality
+var chat = builder.AddGitHubModel("chat", GitHubModel.OpenAI.OpenAIGpt41);
 
 // Add SQLite databases
 var employeeDb = builder.AddSqlite("employeedb");
@@ -44,6 +43,6 @@ builder.AddProject<Projects.BlazorWeb>("blazorweb")
     .WithReference(authServiceApi)
     .WithReference(notificationServiceApi)
     .WithReference(attendanceServiceApi)
-    .WithReference(ollama);
+    .WithReference(chat);
 
 builder.Build().Run();

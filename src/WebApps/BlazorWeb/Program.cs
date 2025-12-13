@@ -9,12 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
-// Add Ollama client with Aspire service discovery.
-// AddOllamaApiClient returns a builder, and AddChatClient chains 
+// Add OpenAI client with Aspire service discovery.
+// AddOpenAIClient returns a builder, and AddChatClient chains 
 // the IChatClient registration for use with Microsoft.Extensions.AI.
-// Note: The connection name "ollama-phi4-mini" matches the model resource name from AppHost.cs
-// (created by .AddOllama("ollama").AddModel("phi4-mini"))
-builder.AddOllamaApiClient("ollama-phi4-mini").AddChatClient();
+// Note: The connection name "chat" matches the OpenAI resource name from AppHost.cs
+builder.AddOpenAIClient("chat").AddChatClient();
 
 // Configure MCP options
 builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));
