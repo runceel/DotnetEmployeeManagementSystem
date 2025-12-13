@@ -582,8 +582,8 @@ public sealed class McpToolAIFunction : AIFunction
         CancellationToken cancellationToken)
     {
         // AI will call with flat arguments based on InputSchema: { employeeId: "123", firstName: "John", ... }
-        // The inner function expects: { arguments: { employeeId: "123", firstName: "John", ... } }
-        // So we need to wrap the arguments
+        // We wrap them as: { arguments: { employeeId: "123", firstName: "John", ... } }
+        // AIFunctionFactory then automatically unwraps and binds them to the IDictionary<string, object?> parameter
         
         var wrappedArgs = new AIFunctionArguments();
         var argumentsDict = new Dictionary<string, object?>();
