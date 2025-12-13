@@ -150,8 +150,8 @@ public sealed class McpAiAgentService : IAsyncDisposable
         // Create a unique name combining server and tool name
         var functionName = $"{serverName}_{tool.Name}";
 
-        // Create the function that will be called by the AI
-        var function = AIFunctionFactory.Create(
+        // Create the base function that will be called by the AI
+        var baseFunction = AIFunctionFactory.Create(
             async (IDictionary<string, object?>? arguments) =>
             {
                 return await CallMcpToolAsync(serverName, tool.Name, arguments);
@@ -162,7 +162,53 @@ public sealed class McpAiAgentService : IAsyncDisposable
                 Description = $"[{serverName}] {tool.Description ?? tool.Name}"
             });
 
-        return function;
+        // If the tool has an InputSchema, wrap the function to expose it to the AI
+        // McpClientTool has a JsonSchema property, but we should use the ProtocolTool.InputSchema
+        var inputSchema = tool.ProtocolTool?.InputSchema;
+        if (inputSchema != null && inputSchema.Value.ValueKind != JsonValueKind.Undefined)
+        {
+            _logger.LogDebug("Creating AI function with InputSchema for tool: {ToolName}", tool.Name);
+            return new McpToolAIFunction(baseFunction, inputSchema.Value, _logger);
+        }
+
+        return baseFunction;
+    }
+
+    /// <summary>
+    /// Validate tool arguments against the InputSchema from MCP tool definition
+    /// </summary>
+    private string? ValidateToolArguments(JsonElement inputSchema, Dictionary<string, object?> arguments)
+    {
+        try
+        {
+            // Parse the schema to extract required fields
+            if (inputSchema.TryGetProperty("required", out var requiredElement) && 
+                requiredElement.ValueKind == JsonValueKind.Array)
+            {
+                var missingArgs = new List<string>();
+                
+                foreach (var requiredField in requiredElement.EnumerateArray())
+                {
+                    var fieldName = requiredField.GetString();
+                    if (fieldName != null && !arguments.ContainsKey(fieldName))
+                    {
+                        missingArgs.Add(fieldName);
+                    }
+                }
+                
+                if (missingArgs.Count > 0)
+                {
+                    return $"Missing required arguments: {string.Join(", ", missingArgs)}";
+                }
+            }
+            
+            return null; // Validation passed
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to validate tool arguments against schema");
+            return null; // Don't block execution if validation fails
+        }
     }
 
     private async Task<string> CallMcpToolAsync(
@@ -187,6 +233,22 @@ public sealed class McpAiAgentService : IAsyncDisposable
             var args = arguments?.ToDictionary(
                 kvp => kvp.Key,
                 kvp => kvp.Value) ?? new Dictionary<string, object?>();
+
+            // Validate required parameters if we have the tool definition
+            if (_serverTools.TryGetValue(serverName, out var tools))
+            {
+                var tool = tools.FirstOrDefault(t => t.Name == toolName);
+                var inputSchema = tool?.ProtocolTool?.InputSchema;
+                if (inputSchema != null && inputSchema.Value.ValueKind != JsonValueKind.Undefined)
+                {
+                    var validationError = ValidateToolArguments(inputSchema.Value, args);
+                    if (validationError != null)
+                    {
+                        _logger.LogWarning("Tool {ToolName} argument validation failed: {Error}", toolName, validationError);
+                        return JsonSerializer.Serialize(new { error = validationError });
+                    }
+                }
+            }
 
             _logger.LogInformation("Calling tool {ToolName} on {ServerName} with args: {Args}",
                 toolName, serverName, JsonSerializer.Serialize(args));
@@ -486,4 +548,56 @@ public sealed class ToolInfo
     public required string ServerDisplayName { get; init; }
     public required string Name { get; init; }
     public required string Description { get; init; }
+}
+
+/// <summary>
+/// AIFunction wrapper that exposes MCP tool's InputSchema to the AI.
+/// This allows the AI to understand the required parameters and their types.
+/// </summary>
+public sealed class McpToolAIFunction : AIFunction
+{
+    private readonly AIFunction _innerFunction;
+    private readonly JsonElement _mcpInputSchema;
+    private readonly ILogger? _logger;
+
+    public McpToolAIFunction(AIFunction innerFunction, JsonElement mcpInputSchema, ILogger? logger = null)
+    {
+        _innerFunction = innerFunction;
+        _mcpInputSchema = mcpInputSchema;
+        _logger = logger;
+    }
+
+    public override string Name => _innerFunction.Name;
+    public override string? Description => _innerFunction.Description;
+    
+    /// <summary>
+    /// Expose the MCP InputSchema directly instead of wrapping parameters
+    /// </summary>
+    public override JsonElement JsonSchema => _mcpInputSchema;
+    
+    public override IReadOnlyDictionary<string, object?> AdditionalProperties => _innerFunction.AdditionalProperties;
+
+    protected override async ValueTask<object?> InvokeCoreAsync(
+        AIFunctionArguments arguments,
+        CancellationToken cancellationToken)
+    {
+        // AI will call with flat arguments based on InputSchema: { employeeId: "123", firstName: "John", ... }
+        // We wrap them as: { arguments: { employeeId: "123", firstName: "John", ... } }
+        // AIFunctionFactory then automatically unwraps and binds them to the IDictionary<string, object?> parameter
+        
+        var wrappedArgs = new AIFunctionArguments();
+        var argumentsDict = new Dictionary<string, object?>();
+        
+        foreach (var kvp in arguments)
+        {
+            argumentsDict[kvp.Key] = kvp.Value;
+        }
+        
+        _logger?.LogDebug("Wrapping {ArgCount} arguments for tool {ToolName}", 
+            argumentsDict.Count, Name);
+        
+        wrappedArgs["arguments"] = argumentsDict;
+        
+        return await _innerFunction.InvokeAsync(wrappedArgs, cancellationToken);
+    }
 }
