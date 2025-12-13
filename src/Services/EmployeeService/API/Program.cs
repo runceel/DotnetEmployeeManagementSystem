@@ -32,38 +32,8 @@ if (!builder.Environment.IsEnvironment("Test"))
 builder.Services.AddScoped<IEmployeeService, EmployeeService.Application.UseCases.EmployeeService>();
 builder.Services.AddScoped<IDepartmentService, EmployeeService.Application.UseCases.DepartmentService>();
 
-// HttpContextAccessor登録（MCPツールで使用）
-builder.Services.AddHttpContextAccessor();
-
-// MCP Server 登録
-builder.Services.AddMcpServer()
-    .WithHttpTransport()           // HTTP/SSE transport有効化
-    .WithToolsFromAssembly();      // 自動的に[McpServerToolType]クラスを検出
-
-// CORS設定（MCP用）
-builder.Services.AddCors(options =>
-{
-    if (builder.Environment.IsDevelopment())
-    {
-        options.AddPolicy("McpPolicy", policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-    }
-    else
-    {
-        options.AddPolicy("McpPolicy", policy =>
-        {
-            var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-    }
-});
+// MCP Server 登録（共通設定）
+builder.AddMcpServerDefaults();
 
 var app = builder.Build();
 
@@ -86,11 +56,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// CORS有効化
-app.UseCors("McpPolicy");
-
-// MCP エンドポイントマッピング
-app.MapMcp("/api/mcp");
+// MCP エンドポイントとCORS設定（共通設定）
+app.UseMcpServerDefaults();
 
 // Map endpoints
 app.MapEmployeeEndpoints();
