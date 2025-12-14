@@ -82,6 +82,13 @@
   - クエリのベストプラクティス
   - 本番環境への移行
 
+- **[Azure デプロイと Application Insights](azure-deployment-appinsights.md)** - Azureへのデプロイと監視
+  - Application Insights と Log Analytics Workspace の自動プロビジョニング
+  - OpenTelemetry との統合
+  - Azure Developer CLI (`azd`) によるデプロイ
+  - テレメトリデータの収集と分析
+  - コスト管理とベストプラクティス
+
 ### サービス
 
 - **[通知サービス実装ガイド](notification-service.md)** - イベント駆動通知システム
@@ -151,6 +158,12 @@
 
 ### エラーをデバッグしたい
 → [Aspireダッシュボード - エラーのデバッグ](aspire-dashboard.md#シナリオ2-エラーのデバッグ)
+
+### Azure にデプロイしたい
+→ [Azure デプロイと Application Insights](azure-deployment-appinsights.md)
+
+### Application Insights でアプリケーションを監視したい
+→ [Azure デプロイと Application Insights - テレメトリデータの収集](azure-deployment-appinsights.md#収集されるテレメトリデータ)
 
 ### 新しいマイクロサービスを追加したい
 → [開発ガイド - 新しいマイクロサービスの追加](development-guide.md#2-新しいマイクロサービスの追加)
