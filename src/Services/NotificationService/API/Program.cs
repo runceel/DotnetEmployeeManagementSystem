@@ -173,8 +173,8 @@ app.Run();
 /// </summary>
 static bool IsSqlServerConnectionString(string connectionString)
 {
-    return connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
-           connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase) && 
+    return (connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase)) && 
            !connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
 }
 
