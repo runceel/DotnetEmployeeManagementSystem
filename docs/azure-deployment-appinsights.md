@@ -10,6 +10,8 @@
 - **Application Insights** - アプリケーションパフォーマンス監視（APM）
 - **OpenTelemetry 統合** - トレース、メトリクス、ログの自動収集
 
+**重要:** Application Insights は Azure デプロイ時（`azd up`）のみ使用されます。ローカル開発環境では Aspire Dashboard がテレメトリの表示に使用されます。
+
 ## アーキテクチャ
 
 ```
@@ -55,27 +57,21 @@
 `src/AppHost/AppHost.cs` では、以下のように Application Insights と Log Analytics Workspace を構成しています：
 
 ```csharp
-// Log Analytics Workspace を追加（Azure デプロイ時に自動作成）
-var logAnalytics = builder.AddAzureLogAnalyticsWorkspace("loganalytics");
-
-// Application Insights を追加し、Log Analytics Workspace に紐付け
-var appInsights = builder.AddAzureApplicationInsights("appinsights")
-    .WithLogAnalyticsWorkspace(logAnalytics);
-
-// 各サービスに Application Insights への参照を追加
-var employeeServiceApi = builder.AddProject<Projects.EmployeeService_API>("employeeservice-api")
-    .WithReference(employeeDb)
-    .WithReference(redis)
-    .WithReference(appInsights)  // Application Insights を参照
-    .WithHttpHealthCheck("/health");
+// Application Insights and Log Analytics Workspace (Azure deployment only)
+// These resources are only provisioned when deploying to Azure via 'azd'
+// Local development uses the Aspire Dashboard for telemetry
+builder.AddAzureApplicationInsights("appinsights")
+    .WithLogAnalyticsWorkspace(
+        builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
 ```
 
 #### 重要なポイント
 
-- **`AddAzureLogAnalyticsWorkspace`** - Log Analytics Workspace リソースを定義
-- **`AddAzureApplicationInsights`** - Application Insights リソースを定義
+- **`AddAzureLogAnalyticsWorkspace`** - Log Analytics Workspace リソースを定義（Azure デプロイ時のみ）
+- **`AddAzureApplicationInsights`** - Application Insights リソースを定義（Azure デプロイ時のみ）
 - **`WithLogAnalyticsWorkspace`** - Application Insights を Log Analytics Workspace に接続
-- **`WithReference(appInsights)`** - 各サービスに `APPLICATIONINSIGHTS_CONNECTION_STRING` 環境変数を自動注入
+- **Azure デプロイ時の動作**: `azd up` コマンド実行時に、これらのリソースが自動的にプロビジョニングされ、`APPLICATIONINSIGHTS_CONNECTION_STRING` 環境変数が各サービスに注入されます
+- **ローカル開発時の動作**: これらのリソースは無視され、Aspire Dashboard が OpenTelemetry データの表示に使用されます
 
 ### 2. ServiceDefaults の OpenTelemetry 構成
 
@@ -107,8 +103,10 @@ private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builde
 #### 動作の仕組み
 
 1. **ローカル開発環境**
+   - Application Insights リソースは無視される
    - `OTEL_EXPORTER_OTLP_ENDPOINT` が設定されている場合、Aspire Dashboard に OpenTelemetry データを送信
-   - `APPLICATIONINSIGHTS_CONNECTION_STRING` は未設定のため、Azure Monitor には送信しない
+   - `APPLICATIONINSIGHTS_CONNECTION_STRING` は設定されないため、Azure Monitor には送信しない
+   - Aspire Dashboard でトレース、メトリクス、ログを確認
 
 2. **Azure 環境**
    - Aspire が自動的に `APPLICATIONINSIGHTS_CONNECTION_STRING` を各サービスに注入
