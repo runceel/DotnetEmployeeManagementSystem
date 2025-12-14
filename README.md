@@ -35,6 +35,7 @@ Aspireダッシュボードが自動的に開き、すべてのサービスを�
 - **[通知サービス実装ガイド](docs/notification-service.md)** - イベント駆動通知システム
 - **[Aspireダッシュボード](docs/aspire-dashboard.md)** - 監視と管理
 - **[データベース管理](docs/database.md)** - マイグレーションとベストプラクティス
+- **[Azure デプロイと Application Insights](docs/azure-deployment-appinsights.md)** - Azure へのデプロイと監視設定
 
 ## 🏗️ プロジェクト構成
 

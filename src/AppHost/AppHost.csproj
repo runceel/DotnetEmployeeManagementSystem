@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" />
+    <PackageReference Include="Aspire.Hosting.Azure.OperationalInsights" />
     <PackageReference Include="Aspire.Hosting.GitHub.Models" />
     <PackageReference Include="Aspire.Hosting.Redis" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" />
