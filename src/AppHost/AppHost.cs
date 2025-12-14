@@ -14,20 +14,43 @@ var authDb = builder.AddSqlite("authdb");
 var notificationDb = builder.AddSqlite("notificationdb");
 var attendanceDb = builder.AddSqlite("attendancedb");
 
+// Application Insights and Log Analytics Workspace (Azure deployment only)
+// Only provision these resources when publishing to Azure (not during local development)
+var appInsights = builder.ExecutionContext.IsPublishMode
+    ? builder.AddAzureApplicationInsights("appinsights")
+        .WithLogAnalyticsWorkspace(
+            builder.AddAzureLogAnalyticsWorkspace("loganalytics"))
+    : null;
+
 // Add services with database references
 var employeeServiceApi = builder.AddProject<Projects.EmployeeService_API>("employeeservice-api")
     .WithReference(employeeDb)
     .WithReference(redis)
     .WithHttpHealthCheck("/health");
 
+if (appInsights != null)
+{
+    employeeServiceApi.WithReference(appInsights);
+}
+
 var authServiceApi = builder.AddProject<Projects.AuthService_API>("authservice-api")
     .WithReference(authDb)
     .WithHttpHealthCheck("/health");
+
+if (appInsights != null)
+{
+    authServiceApi.WithReference(appInsights);
+}
 
 var notificationServiceApi = builder.AddProject<Projects.NotificationService_API>("notificationservice-api")
     .WithReference(notificationDb)
     .WithReference(redis)
     .WithHttpHealthCheck("/health");
+
+if (appInsights != null)
+{
+    notificationServiceApi.WithReference(appInsights);
+}
 
 var attendanceServiceApi = builder.AddProject<Projects.AttendanceService_API>("attendanceservice-api")
     .WithReference(attendanceDb)
@@ -36,8 +59,13 @@ var attendanceServiceApi = builder.AddProject<Projects.AttendanceService_API>("a
     .WaitFor(employeeServiceApi)
     .WithHttpHealthCheck("/health");
 
+if (appInsights != null)
+{
+    attendanceServiceApi.WithReference(appInsights);
+}
+
 // Add Blazor web app with service references
-builder.AddProject<Projects.BlazorWeb>("blazorweb")
+var blazorWeb = builder.AddProject<Projects.BlazorWeb>("blazorweb")
     .WithExternalHttpEndpoints()
     .WithReference(employeeServiceApi)
     .WithReference(authServiceApi)
@@ -45,13 +73,9 @@ builder.AddProject<Projects.BlazorWeb>("blazorweb")
     .WithReference(attendanceServiceApi)
     .WithReference(chat);
 
-// Application Insights and Log Analytics Workspace (Azure deployment only)
-// Only provision these resources when publishing to Azure (not during local development)
-if (builder.ExecutionContext.IsPublishMode)
+if (appInsights != null)
 {
-    builder.AddAzureApplicationInsights("appinsights")
-        .WithLogAnalyticsWorkspace(
-            builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
+    blazorWeb.WithReference(appInsights);
 }
 
 builder.Build().Run();

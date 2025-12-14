@@ -59,11 +59,21 @@
 ```csharp
 // Application Insights and Log Analytics Workspace (Azure deployment only)
 // Only provision these resources when publishing to Azure (not during local development)
-if (builder.ExecutionContext.IsPublishMode)
-{
-    builder.AddAzureApplicationInsights("appinsights")
+var appInsights = builder.ExecutionContext.IsPublishMode
+    ? builder.AddAzureApplicationInsights("appinsights")
         .WithLogAnalyticsWorkspace(
-            builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
+            builder.AddAzureLogAnalyticsWorkspace("loganalytics"))
+    : null;
+
+// 各サービスに Application Insights の参照を追加
+var employeeServiceApi = builder.AddProject<Projects.EmployeeService_API>("employeeservice-api")
+    .WithReference(employeeDb)
+    .WithReference(redis)
+    .WithHttpHealthCheck("/health");
+
+if (appInsights != null)
+{
+    employeeServiceApi.WithReference(appInsights);
 }
 ```
 
@@ -73,6 +83,9 @@ if (builder.ExecutionContext.IsPublishMode)
 - **`AddAzureLogAnalyticsWorkspace`** - Log Analytics Workspace リソースを定義
 - **`AddAzureApplicationInsights`** - Application Insights リソースを定義
 - **`WithLogAnalyticsWorkspace`** - Application Insights を Log Analytics Workspace に接続
+- **`WithReference(appInsights)`** - 各サービスに `APPLICATIONINSIGHTS_CONNECTION_STRING` 環境変数を自動注入
+  - この環境変数は、ServiceDefaults の Azure Monitor exporter によって自動的に検出される
+  - .NET Aspire が自動的に Application Insights の接続文字列を環境変数として設定
 - **Azure デプロイ時の動作**: `azd up` コマンド実行時に、これらのリソースが自動的にプロビジョニングされ、`APPLICATIONINSIGHTS_CONNECTION_STRING` 環境変数が各サービスに注入されます
 - **ローカル開発時の動作**: `if` 条件により、これらのリソースは定義されず、Aspire Dashboard が OpenTelemetry データの表示に使用されます
 
