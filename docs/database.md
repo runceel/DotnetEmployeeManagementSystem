@@ -360,45 +360,196 @@ dotnet ef database update --startup-project ../API
 
 ## 本番環境への移行
 
+### Azure SQL Database への切り替え（.NET Aspire PublishMode）
+
+本システムは .NET Aspire の `PublishMode` を使用して、自動的に Azure SQL Database へ切り替わるように設計されています。
+
+#### 自動切り替えの仕組み
+
+**AppHost.cs の設定**:
+```csharp
+// PublishMode時はAzure SQL Database、開発時はSQLiteを使用
+if (builder.ExecutionContext.IsPublishMode)
+{
+    var sqlServer = builder.AddAzureSqlServer("sql");
+    employeeDb = sqlServer.AddDatabase("employeedb");
+    authDb = sqlServer.AddDatabase("authdb");
+    notificationDb = sqlServer.AddDatabase("notificationdb");
+    attendanceDb = sqlServer.AddDatabase("attendancedb");
+}
+else
+{
+    employeeDb = builder.AddSqlite("employeedb");
+    authDb = builder.AddSqlite("authdb");
+    notificationDb = builder.AddSqlite("notificationdb");
+    attendanceDb = builder.AddSqlite("attendancedb");
+}
+```
+
+**各サービスの DependencyInjection.cs**:
+```csharp
+// 環境に応じて自動的にプロバイダーを切り替え
+var useSqlServer = environment?.IsProduction() == true && 
+                  IsSqlServerConnectionString(connectionString);
+
+services.AddDbContext<EmployeeDbContext>(options =>
+{
+    if (useSqlServer)
+    {
+        options.UseSqlServer(connectionString, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+        });
+    }
+    else
+    {
+        options.UseSqlite(connectionString);
+    }
+});
+```
+
+#### デプロイ手順
+
+1. **Azure へのデプロイ**:
+```bash
+# Azure Developer CLI (azd) を使用
+azd init
+azd up
+```
+
+2. **マニフェスト生成** (確認用):
+```bash
+dotnet run --project src/AppHost -- --publisher manifest --output-path ./aspire-manifest.json
+```
+
 ### 接続文字列の管理
 
-本番環境では環境変数または Azure Key Vault を使用：
+本番環境では Aspire が自動的に接続文字列を注入します。手動設定が必要な場合：
 
-```csharp
-// appsettings.Production.json
+**appsettings.Production.json**:
+```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "" // 空にしておく
+    "EmployeeDb": ""  // 空にしておく（Aspireが自動注入）
   }
 }
-
-// Program.cs
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING")
-    ?? throw new InvalidOperationException("Connection string not found");
-
-builder.Services.AddDbContext<EmployeeDbContext>(options =>
-    options.UseSqlServer(connectionString)); // または UseNpgsql
 ```
+
+**環境変数による上書き**（オプション）:
+```bash
+export ConnectionStrings__EmployeeDb="Server=..."
+```
+
+**Azure Key Vault** (将来の拡張):
+```csharp
+builder.Configuration.AddAzureKeyVault(
+    new Uri($"https://{keyVaultName}.vault.azure.net/"),
+    new DefaultAzureCredential());
+```
+
+### SQL Server 用マイグレーションの検証
+
+既存の SQLite マイグレーションは SQL Server でも動作しますが、本番デプロイ前に検証を推奨します。
+
+#### ローカルで SQL Server を使用してテスト
+
+```bash
+# Docker で SQL Server を起動
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" \
+  -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
+
+# 接続文字列を設定
+export ConnectionStrings__EmployeeDb="Server=localhost,1433;Database=employeedb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+export ASPNETCORE_ENVIRONMENT=Production
+
+# マイグレーション適用
+cd src/Services/EmployeeService/Infrastructure
+dotnet ef database update --startup-project ../API
+```
+
+#### マイグレーションスクリプトの生成と確認
+
+```bash
+cd src/Services/EmployeeService/Infrastructure
+
+# SQL Server用のスクリプト生成
+dotnet ef migrations script --startup-project ../API -o migrations-sqlserver.sql
+
+# 生成されたSQLを確認
+cat migrations-sqlserver.sql
+```
+
+**注意事項**:
+- SQLite と SQL Server でデータ型が異なる場合があります
+- `INTEGER PRIMARY KEY` → `INT IDENTITY(1,1) PRIMARY KEY`
+- `TEXT` → `NVARCHAR(MAX)`
+- インデックスや外部キー制約は両方で動作します
 
 ### マイグレーションの適用戦略
 
-**オプション1: 自動マイグレーション**（小規模アプリケーション）
+**オプション1: 自動マイグレーション**（開発・ステージング環境）
 ```csharp
-await context.Database.MigrateAsync();
+// Program.cs で既に実装済み
+if (app.Environment.IsDevelopment())
+{
+    await DbInitializer.InitializeAsync(app.Services);
+}
 ```
 
-**オプション2: SQLスクリプト**（推奨）
+**オプション2: SQLスクリプト**（本番環境推奨）
 ```bash
-# スクリプト生成
-dotnet ef migrations script --startup-project ../API -o migration.sql
+# 各サービスでスクリプト生成
+cd src/Services/EmployeeService/Infrastructure
+dotnet ef migrations script --startup-project ../API -o employee-migration.sql
 
-# 本番環境で実行（DBA経由）
+cd ../../../AuthService/Infrastructure
+dotnet ef migrations script --startup-project ../API -o auth-migration.sql
+
+# DBAレビュー後、本番環境で実行
 ```
 
 **オプション3: CI/CD パイプライン**
 - GitHub Actions / Azure DevOps
-- マイグレーションを自動適用
+- マイグレーションを自動適用（ステージング環境）
+- 本番環境は手動承認後に適用
+
+### データベースの初期化確認
+
+Azure にデプロイ後、データベースが正しく作成されたか確認：
+
+```bash
+# Azure SQL Database に接続
+sqlcmd -S <server-name>.database.windows.net -d employeedb -U <username> -P <password>
+
+# テーブル確認
+SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES;
+
+# マイグレーション履歴確認
+SELECT * FROM __EFMigrationsHistory;
+```
+
+### トラブルシューティング
+
+**エラー**: `Login failed for user`
+```bash
+# Azure SQL のファイアウォール設定を確認
+# Azure Portal → SQL Server → Networking → Firewall rules
+```
+
+**エラー**: `Cannot open database "employeedb"`
+```bash
+# データベースが作成されているか確認
+# Aspire が自動作成するはずだが、手動作成も可能
+```
+
+**エラー**: `A network-related or instance-specific error`
+```bash
+# 接続文字列を確認
+# TrustServerCertificate=True が必要な場合がある
+```
 
 ## 関連ドキュメント
 
@@ -406,3 +557,5 @@ dotnet ef migrations script --startup-project ../API -o migration.sql
 - [アーキテクチャ](architecture.md)
 - [開発ガイド](development-guide.md)
 - [Entity Framework Core ドキュメント](https://learn.microsoft.com/ef/core/)
+- [.NET Aspire Azure SQL Database 統合](https://learn.microsoft.com/dotnet/aspire/database/sql-server-integration)
+- [Azure SQL Database ドキュメント](https://learn.microsoft.com/azure/azure-sql/)
