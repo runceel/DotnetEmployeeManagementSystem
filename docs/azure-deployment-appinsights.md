@@ -352,6 +352,7 @@ Application Insights のコストは主にデータ取り込み量に基づき�
 ```kusto
 Usage
 | where TimeGenerated > ago(30d)
+// Quantity is in bytes, convert to MB (1000 bytes = 1 KB, 1000 KB = 1 MB for billing purposes)
 | summarize DataVolumeMB = sum(Quantity) / 1000 by DataType
 | order by DataVolumeMB desc
 ```
