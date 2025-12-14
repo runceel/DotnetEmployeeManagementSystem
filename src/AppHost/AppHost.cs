@@ -46,10 +46,12 @@ builder.AddProject<Projects.BlazorWeb>("blazorweb")
     .WithReference(chat);
 
 // Application Insights and Log Analytics Workspace (Azure deployment only)
-// These resources are only provisioned when deploying to Azure via 'azd'
-// Local development uses the Aspire Dashboard for telemetry
-builder.AddAzureApplicationInsights("appinsights")
-    .WithLogAnalyticsWorkspace(
-        builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
+// Only provision these resources when publishing to Azure (not during local development)
+if (builder.ExecutionContext.IsPublishMode)
+{
+    builder.AddAzureApplicationInsights("appinsights")
+        .WithLogAnalyticsWorkspace(
+            builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
+}
 
 builder.Build().Run();

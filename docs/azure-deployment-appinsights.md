@@ -58,20 +58,23 @@
 
 ```csharp
 // Application Insights and Log Analytics Workspace (Azure deployment only)
-// These resources are only provisioned when deploying to Azure via 'azd'
-// Local development uses the Aspire Dashboard for telemetry
-builder.AddAzureApplicationInsights("appinsights")
-    .WithLogAnalyticsWorkspace(
-        builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
+// Only provision these resources when publishing to Azure (not during local development)
+if (builder.ExecutionContext.IsPublishMode)
+{
+    builder.AddAzureApplicationInsights("appinsights")
+        .WithLogAnalyticsWorkspace(
+            builder.AddAzureLogAnalyticsWorkspace("loganalytics"));
+}
 ```
 
 #### 重要なポイント
 
-- **`AddAzureLogAnalyticsWorkspace`** - Log Analytics Workspace リソースを定義（Azure デプロイ時のみ）
-- **`AddAzureApplicationInsights`** - Application Insights リソースを定義（Azure デプロイ時のみ）
+- **`ExecutionContext.IsPublishMode`** - Azure へのパブリッシュ時（`azd up`）のみ `true` になる
+- **`AddAzureLogAnalyticsWorkspace`** - Log Analytics Workspace リソースを定義
+- **`AddAzureApplicationInsights`** - Application Insights リソースを定義
 - **`WithLogAnalyticsWorkspace`** - Application Insights を Log Analytics Workspace に接続
 - **Azure デプロイ時の動作**: `azd up` コマンド実行時に、これらのリソースが自動的にプロビジョニングされ、`APPLICATIONINSIGHTS_CONNECTION_STRING` 環境変数が各サービスに注入されます
-- **ローカル開発時の動作**: これらのリソースは無視され、Aspire Dashboard が OpenTelemetry データの表示に使用されます
+- **ローカル開発時の動作**: `if` 条件により、これらのリソースは定義されず、Aspire Dashboard が OpenTelemetry データの表示に使用されます
 
 ### 2. ServiceDefaults の OpenTelemetry 構成
 
