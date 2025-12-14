@@ -56,8 +56,27 @@ if (!builder.Environment.IsEnvironment("Test"))
     var connectionString = builder.Configuration.GetConnectionString("NotificationDb") 
         ?? "Data Source=notifications.db";
     
+    // 環境に応じてデータベースプロバイダーを切り替え
+    var useSqlServer = builder.Environment.IsProduction() && 
+                      IsSqlServerConnectionString(connectionString);
+
     builder.Services.AddDbContext<NotificationDbContext>(options =>
-        options.UseSqlite(connectionString));
+    {
+        if (useSqlServer)
+        {
+            options.UseSqlServer(connectionString, sqlOptions =>
+            {
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+            });
+        }
+        else
+        {
+            options.UseSqlite(connectionString);
+        }
+    });
 }
 
 // Redis接続 (Test環境ではスキップ)
@@ -148,6 +167,16 @@ if (!app.Environment.IsEnvironment("Test"))
 }
 
 app.Run();
+
+/// <summary>
+/// 接続文字列がSQL Server用かどうかを判定
+/// </summary>
+static bool IsSqlServerConnectionString(string connectionString)
+{
+    return connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+           connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase) && 
+           !connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
+}
 
 // Make Program accessible to integration tests
 public partial class Program { }

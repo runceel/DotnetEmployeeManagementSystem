@@ -16,7 +16,7 @@ var connectionString = builder.Configuration.GetConnectionString("AuthDb")
     ?? "Data Source=auth.db";
 
 // Infrastructure層のサービスを追加
-builder.Services.AddInfrastructure(connectionString);
+builder.Services.AddInfrastructure(connectionString, builder.Environment);
 
 // HttpContextAccessor登録（MCPツールで使用）
 builder.Services.AddHttpContextAccessor();

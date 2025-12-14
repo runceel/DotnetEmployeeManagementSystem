@@ -19,7 +19,7 @@ if (!builder.Environment.IsEnvironment("Test"))
         ?? "Data Source=attendance.db";
 
     // Infrastructure層のサービスを追加
-    builder.Services.AddInfrastructure(connectionString);
+    builder.Services.AddInfrastructure(connectionString, builder.Environment);
 
     // Redis接続の追加
     builder.AddRedisClient("redis");
