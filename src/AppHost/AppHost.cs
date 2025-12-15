@@ -1,4 +1,5 @@
 using Aspire.Hosting.GitHub;
+using Aspire.Hosting.ApplicationModel;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -8,11 +9,30 @@ var redis = builder.AddRedis("redis");
 // Add GitHub Model (GPT-4.1) for AI chat functionality
 var chat = builder.AddGitHubModel("chat", GitHubModel.OpenAI.OpenAIGpt41);
 
-// Add SQLite databases
-var employeeDb = builder.AddSqlite("employeedb");
-var authDb = builder.AddSqlite("authdb");
-var notificationDb = builder.AddSqlite("notificationdb");
-var attendanceDb = builder.AddSqlite("attendancedb");
+// データベース設定: PublishMode時はAzure SQL Databaseを使用、それ以外はSQLiteを使用
+IResourceBuilder<IResourceWithConnectionString> employeeDb;
+IResourceBuilder<IResourceWithConnectionString> authDb;
+IResourceBuilder<IResourceWithConnectionString> notificationDb;
+IResourceBuilder<IResourceWithConnectionString> attendanceDb;
+
+if (builder.ExecutionContext.IsPublishMode)
+{
+    // Azure SQL Database (本番環境)
+    var sqlServer = builder.AddAzureSqlServer("sql");
+
+    employeeDb = sqlServer.AddDatabase("employeedb");
+    authDb = sqlServer.AddDatabase("authdb");
+    notificationDb = sqlServer.AddDatabase("notificationdb");
+    attendanceDb = sqlServer.AddDatabase("attendancedb");
+}
+else
+{
+    // SQLite (開発環境)
+    employeeDb = builder.AddSqlite("employeedb");
+    authDb = builder.AddSqlite("authdb");
+    notificationDb = builder.AddSqlite("notificationdb");
+    attendanceDb = builder.AddSqlite("attendancedb");
+}
 
 // Application Insights and Log Analytics Workspace (Azure deployment only)
 // Only provision these resources when publishing to Azure (not during local development)

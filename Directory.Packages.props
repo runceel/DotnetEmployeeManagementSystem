@@ -7,6 +7,7 @@
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.OperationalInsights" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Sql" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.GitHub.Models" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.0.2" />
     <PackageVersion Include="Aspire.OpenAI" Version="13.0.2-preview.1.25603.5" />
@@ -26,6 +27,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.1" />
     <!-- Microsoft Extensions Packages -->
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.1" />
