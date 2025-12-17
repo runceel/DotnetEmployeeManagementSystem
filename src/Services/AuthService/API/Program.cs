@@ -18,44 +18,8 @@ var connectionString = builder.Configuration.GetConnectionString("AuthDb")
 // Infrastructure層のサービスを追加
 builder.Services.AddInfrastructure(connectionString, builder.Environment);
 
-// HttpContextAccessor登録（MCPツールで使用）
-builder.Services.AddHttpContextAccessor();
-
-// MCP Server 登録
-builder.Services.AddMcpServer()
-    .WithHttpTransport()           // HTTP/SSE transport有効化
-    .WithToolsFromAssembly();      // 自動的に[McpServerToolType]クラスを検出
-
-// CORS設定（MCP用）
-builder.Services.AddCors(options =>
-{
-    if (builder.Environment.IsDevelopment())
-    {
-        options.AddPolicy("McpPolicy", policy =>
-        {
-            // 開発環境でも特定のオリジンのみ許可
-            policy.WithOrigins(
-                      "http://localhost:3000",
-                      "https://localhost:3001",
-                      "http://localhost:5000",
-                      "https://localhost:5001")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-    }
-    else
-    {
-        options.AddPolicy("McpPolicy", policy =>
-        {
-            var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-    }
-});
+// MCP Server 登録（共通設定）
+builder.AddMcpServerDefaults();
 
 var app = builder.Build();
 
@@ -72,11 +36,8 @@ app.MapDefaultEndpoints();
 
 app.UseHttpsRedirection();
 
-// CORS有効化
-app.UseCors("McpPolicy");
-
-// MCP エンドポイントマッピング
-app.MapMcp("/api/mcp");
+// MCP エンドポイントとCORS設定（共通設定）
+app.UseMcpServerDefaults();
 
 // Map endpoints
 app.MapAuthEndpoints();

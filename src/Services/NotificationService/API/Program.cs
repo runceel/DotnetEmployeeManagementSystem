@@ -91,36 +91,10 @@ builder.Services.AddScoped<INotificationService, NotificationService.Application
 builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
 builder.Services.AddScoped<IEventPublisher, RedisEventPublisher>();
 
-// MCP Server 登録 (Test環境ではスキップ)
+// MCP Server 登録（共通設定、Test環境ではスキップ）
 if (!builder.Environment.IsEnvironment("Test"))
 {
-    builder.Services.AddMcpServer()
-        .WithHttpTransport()           // HTTP/SSE transport
-        .WithToolsFromAssembly();      // 自動的に[McpServerToolType]を検出
-
-    // CORS設定（MCP用）
-    builder.Services.AddCors(options =>
-    {
-        if (builder.Environment.IsDevelopment())
-        {
-            options.AddPolicy("McpPolicy", policy =>
-            {
-                policy.AllowAnyOrigin()
-                      .AllowAnyHeader()
-                      .AllowAnyMethod();
-            });
-        }
-        else
-        {
-            options.AddPolicy("McpPolicy", policy =>
-            {
-                policy.WithOrigins(builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [])
-                      .AllowAnyHeader()
-                      .AllowAnyMethod()
-                      .AllowCredentials();
-            });
-        }
-    });
+    builder.AddMcpServerDefaults();
 }
 
 // バックグラウンドワーカーの登録 (Test環境ではスキップ)
@@ -151,20 +125,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// CORS有効化 (Test環境ではスキップ)
+// MCP エンドポイントとCORS設定（共通設定、Test環境ではスキップ）
 if (!app.Environment.IsEnvironment("Test"))
 {
-    app.UseCors("McpPolicy");
+    app.UseMcpServerDefaults();
 }
 
 // Map endpoints
 app.MapNotificationEndpoints();
-
-// MCP エンドポイントマッピング (Test環境ではスキップ)
-if (!app.Environment.IsEnvironment("Test"))
-{
-    app.MapMcp("/api/mcp");
-}
 
 app.Run();
 
