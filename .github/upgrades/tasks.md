@@ -12,12 +12,14 @@
 - Tier 5 (App Hosts): 0/6 complete
 - Validation & Completion: 0/7 complete
 
+
 **Status Legend**:
 - `[ ]` Not started
 - `[?]` In progress
 - `[?]` Complete
 - `[?]` Failed
 - `[?]` Skipped
+
 
 ---
 
